@@ -1,0 +1,6 @@
+[submodule "runtime"]
+	path = runtime
+	url = https://github.com/sireum/runtime.git
+[submodule "logika"]
+	path = logika
+	url = https://github.com/sireum/logika.git
