@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -342,20 +342,61 @@ object AutoPlugin {
       return if (status) s0.addClaim(conclusion) else err
     }
 
-    val provenClaims = HashMap ++ (for (spc <- spcMap.values if spc.isInstanceOf[StepProofContext.Regular]) yield
-      (logika.th.normalizeExp(spc.asInstanceOf[StepProofContext.Regular].exp), spc.asInstanceOf[StepProofContext.Regular]))
+    @pure def computeProvenClaims(spcs: ISZ[StepProofContext]): HashSMap[AST.Exp, (AST.ProofAst.StepId, B, AST.Exp)] = {
+      if (id != "Auto") {
+        return HashSMap ++ (for (spc <- spcMap.values if spc.isInstanceOf[StepProofContext.Regular]) yield
+          (logika.th.normalizeExp(spc.asInstanceOf[StepProofContext.Regular].exp), (spc.stepNo, T,
+            spc.asInstanceOf[StepProofContext.Regular].exp)))
+      }
+      var r = HashSMap.empty[AST.Exp, (AST.ProofAst.StepId, B, AST.Exp)]
+      for (spc <- spcs) {
+        spc match {
+          case spc: StepProofContext.Regular =>
+            val claim = spc.exp
+            r = r + logika.th.normalizeExp(claim) ~> (spc.stepNo, T, claim)
+          case spc: StepProofContext.SubProof =>
+            val claims: ISZ[AST.Exp] = for (p <- computeProvenClaims(spc.spcs).entries) yield p._2._3
+            val claim = AST.Util.bigImply(T, ISZ(spc.assumption, AST.Util.bigAnd(claims, spc.stepNo.posOpt)), spc.stepNo.posOpt)
+            r = r + logika.th.normalizeExp(claim) ~> (spc.stepNo, F, claim)
+          case spc: StepProofContext.FreshSubProof =>
+            val claims: ISZ[AST.Exp] = for (p <- computeProvenClaims(spc.spcs).entries) yield p._2._3
+            val tattr = AST.TypedAttr(spc.stepNo.posOpt, AST.Typed.bOpt)
+            var params = ISZ[AST.Exp.Fun.Param]()
+            for (p <- spc.params) {
+              params = params :+ AST.Exp.Fun.Param(Some(p.id), p.tipeOpt, p.tipeOpt.get.typedOpt)
+            }
+            val claim = AST.Exp.QuantType(T, AST.Exp.Fun(spc.context, params,
+              AST.Stmt.Expr(AST.Util.bigAnd(claims, spc.stepNo.posOpt), tattr), tattr), AST.Attr(spc.stepNo.posOpt))
+            r = r + logika.th.normalizeExp(claim) ~> (spc.stepNo, F, claim)
+          case spc: StepProofContext.FreshAssumeSubProof =>
+            val claims: ISZ[AST.Exp] = for (p <- computeProvenClaims(spc.spcs).entries) yield p._2._3
+            val tattr = AST.TypedAttr(spc.stepNo.posOpt, AST.Typed.bOpt)
+            var params = ISZ[AST.Exp.Fun.Param]()
+            for (p <- spc.params) {
+              params = params :+ AST.Exp.Fun.Param(Some(p.id), p.tipeOpt, p.tipeOpt.get.typedOpt)
+            }
+            val claim = AST.Exp.QuantType(F, AST.Exp.Fun(spc.context, params,
+              AST.Stmt.Expr(AST.Util.bigImply(T, ISZ(spc.assumption, AST.Util.bigAnd(claims, spc.stepNo.posOpt)),
+              spc.stepNo.posOpt), tattr), tattr), AST.Attr(spc.stepNo.posOpt))
+            r = r + logika.th.normalizeExp(claim) ~> (spc.stepNo, F, claim)
+        }
+      }
+      return r
+    }
+
+    val provenClaims = computeProvenClaims(spcMap.values)
 
     if (!just.hasWitness) {
       val claimNorm = logika.th.normalizeExp(step.claim)
       val spcOpt = provenClaims.get(claimNorm)
       spcOpt match {
-        case Some(spc) =>
+        case Some((stepNo, _, stepExp)) =>
           if (logika.config.detailedInfo) {
-            val spcPos = spc.stepNo.posOpt.get
+            val spcPos = stepNo.posOpt.get
             reporter.inform(step.claim.posOpt.get, Reporter.Info.Kind.Verified,
-              st"""Accepted by using ${Plugin.stepNoDesc(F, spc.stepNo)} at [${spcPos.beginLine}, ${spcPos.beginColumn}], i.e.:
+              st"""Accepted by using ${Plugin.stepNoDesc(F, stepNo)} at [${spcPos.beginLine}, ${spcPos.beginColumn}], i.e.:
                   |
-                  |${spc.exp}
+                  |$stepExp
                   |""".render)
           }
           return state
@@ -394,7 +435,7 @@ object AutoPlugin {
                   }
                 }
                 reporter.error(posOpt, Logika.kind,
-                  st"""The stated claim has not been proven before nor is a premise in the path conditions:
+                  st"""The stated claim has not been proven before nor is a premise in the path conditions.
                       |{
                       |  ${(for (e <- pathConditions) yield e.prettyST, ";\n")}
                       |}""".render)
@@ -409,28 +450,44 @@ object AutoPlugin {
       }
     }
 
+    val l = logika(config = logika.config(isAuto = T))
+    var _atMapInit = F
+    var _atMap: org.sireum.logika.Util.ClaimsToExps.AtMap = HashMap.empty
+    def atMap: org.sireum.logika.Util.ClaimsToExps.AtMap = {
+      if (!_atMapInit) {
+        _atMapInit = T
+        _atMap = org.sireum.logika.Util.claimsToExps(logika.jescmPlugins._4, pos, logika.context.methodName,
+          state.claims, logika.th, F, logika.config.atRewrite)._2
+      }
+      return _atMap
+    }
     if (!just.hasWitness) {
-      val (s0, conclusion) = logika(config = logika.config(isAuto = T)).
-          evalRegularStepClaimValue(smt2, cache, state, step.claim, step.id.posOpt, reporter)
-      return checkValid(smt2, s0, State.Claim.Prop(T, conclusion))
+      var s0 = state
+      for (p <- provenClaims.entries) {
+        if (!p._2._2) {
+          val (s1, exp) = l.rewriteAt(atMap, s0, p._2._3, reporter)
+          s0 = l.evalAssume(smt2, cache, T, "", s1, exp, p._2._3.posOpt, reporter)._1
+        }
+      }
+      val (s2, conclusion) = l.evalRegularStepClaimValue(smt2, cache, s0, step.claim, step.id.posOpt, reporter)
+      if (s2.ok) {
+        val s3 = checkValid(smt2, s2, State.Claim.Prop(T, conclusion))
+        if (s3.ok) {
+          return state(claims = state.claims ++ ops.ISZOps(s3.claims).slice(s0.claims.size, s3.claims.size), nextFresh = s3.nextFresh)
+        }
+      }
+      return err
     } else {
-      val psmt2 = smt2.emptyCache(logika.config)
-      val atMap = org.sireum.logika.Util.claimsToExps(logika.jescmPlugins._4, pos, logika.context.methodName,
-        state.claims, logika.th, F, logika.config.atRewrite)._2
-      val (suc, m) = state.unconstrainedClaims
+      val (suc, _) = state.unconstrainedClaims
       var s1 = suc
       var ok = T
+      val provenClaimMap = HashMap ++ (for (p <- provenClaims.entries) yield p._2._1 ~> p._2._3)
       for (arg <- just.witnesses if ok) {
         val stepNo = arg
-        spcMap.get(stepNo) match {
-          case Some(spc: StepProofContext.Regular) =>
-            val (s2, exp) = logika.rewriteAt(atMap, s1, spc.exp, reporter)
-            val ISZ((s3, v)) = logika.evalExp(Logika.Split.Disabled, psmt2, cache, F, s2, exp, reporter)
-            val (s4, sym) = logika.value2Sym(s3, v, spc.exp.posOpt.get)
-            s1 = s4.addClaim(State.Claim.Prop(T, sym))
-          case Some(_) =>
-            reporter.error(posOpt, Logika.kind, s"Cannot use compound proof step $stepNo as an argument for $id")
-            ok = F
+        provenClaimMap.get(stepNo) match {
+          case Some(spcExp) =>
+            val (s2, exp) = l.rewriteAt(atMap, s1, spcExp, reporter)
+            s1 = l.evalAssume(smt2, cache, T, "", s2, exp, exp.posOpt, reporter)._1
           case _ =>
             reporter.error(posOpt, Logika.kind, s"Could not find proof step $stepNo")
             ok = F
@@ -439,17 +496,15 @@ object AutoPlugin {
       if (!ok) {
         return err
       }
-      val (s5, exp) = logika.rewriteAt(atMap, s1, step.claim, reporter)
-      val (s6, conclusion) = logika(config = logika.config(isAuto = T)).
-          evalRegularStepClaimValue(psmt2, cache, s5, exp, step.id.posOpt, reporter)
-      val r = checkValid(psmt2, s6, State.Claim.Prop(T, conclusion))
-      smt2.combineWith(psmt2)
-      val sClaims = state.claims.toMS
-      for (p <- m) {
-        val (i, j) = p
-        sClaims(i) = r.claims(j)
+      val (s5, exp) = l.rewriteAt(atMap, s1, step.claim, reporter)
+      val (s6, conclusion) = l.evalRegularStepClaimValue(smt2, cache, s5, exp, step.id.posOpt, reporter)
+      if (s6.ok) {
+        val r = checkValid(smt2, s6, State.Claim.Prop(T, conclusion))
+        if (r.ok) {
+          return state(claims = state.claims ++ ops.ISZOps(r.claims).slice(s1.claims.size, r.claims.size), nextFresh = r.nextFresh)
+        }
       }
-      return if (r.ok) r(claims = sClaims.toISZ[State.Claim] ++ ops.ISZOps(r.claims).slice(suc.claims.size, r.claims.size)) else err
+      return err
     }
   }
 

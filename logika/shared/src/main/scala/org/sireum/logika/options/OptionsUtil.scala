@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  ∀ rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -36,7 +36,7 @@ object OptionsUtil {
                  fileContent: String, posOpt: Option[message.Position], reporter: message.Reporter): Config = {
     val m = LibUtil.mineOptions(fileContent)
     val options: String = m.get(logika) match {
-      case Some(o) => o
+      case Some(o) => o(0)
       case _ => return defaultConfig
     }
     toConfig(defaultConfig, maxCores, title, nameExePathMap, options) match {
@@ -176,7 +176,9 @@ object OptionsUtil {
       rwTrace = o.rwTrace,
       rwMax = o.rwMax,
       rwPar = o.rwPar,
-      rwEvalTrace = o.rwEvalTrace
+      rwEvalTrace = o.rwEvalTrace,
+      branchParPredNum = o.branchPredNum,
+      branchParPredComp = o.branchPredComplexity
     )
     return Either.Left(config)
   }
@@ -336,6 +338,12 @@ object OptionsUtil {
       }
       if (config.rwEvalTrace != defaultConfig.rwEvalTrace) {
         r = r :+ "--rw-eval-trace"
+      }
+      if (config.branchParPredNum != defaultConfig.branchParPredNum) {
+        r = r ++ ISZ[String]("--par-branch-pred-num", config.branchParPredNum.string)
+      }
+      if (config.branchParPredComp != defaultConfig.branchParPredComp) {
+        r = r ++ ISZ[String]("--par-branch-pred-complexity", config.branchParPredComp.string)
       }
     }
     config.background match {

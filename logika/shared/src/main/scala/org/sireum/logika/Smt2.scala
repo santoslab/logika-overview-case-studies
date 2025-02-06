@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -652,7 +652,7 @@ object Smt2 {
     }
     if (cached) {
       if (reportQuery) {
-        reporter.query(pos, title, T, smt2res.timeMillis, F, config.elideEncoding, smt2res)
+        reporter.query(pos, title, T, smt2res.totalTimeMillis, F, config.elideEncoding, smt2res)
       }
       return (r, smt2res)
     }
@@ -1685,7 +1685,7 @@ object Smt2 {
     )
     val forceReport = smt2res.kind != Smt2Query.Result.Kind.Unsat
     if (reportQuery || forceReport || config.logVc) {
-      reporter.query(pos, title, F, res.timeMillis, forceReport, config.elideEncoding, res)
+      reporter.query(pos, title, F, res.totalTimeMillis, forceReport, config.elideEncoding, res)
     }
     config.logVcDirOpt match {
       case Some(logDir) =>

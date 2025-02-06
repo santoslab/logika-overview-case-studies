@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -28,6 +28,12 @@ package org.sireum
 @ext object Library {
 
   def sharedFiles: ISZ[(Option[String], String)] = $
+
+  def jvmFiles: ISZ[(Option[String], String)] = $
+
+  def fontFiles: ISZ[(Option[String], String)] = $
+
+  def vscodeImageFiles: ISZ[(Option[String], String)] = $
 
   def files: ISZ[(Option[String], String)] = $
 

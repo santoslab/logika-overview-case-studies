@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -33,9 +33,9 @@ import java.util.zip.{ZipEntry => ZE, ZipInputStream => ZIS, ZipOutputStream => 
 import com.zaxxer.nuprocess._
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
-import org.sireum.$internal.CollectionCompat
 import org.sireum.$internal.CollectionCompat.Converters._
 import org.sireum.message.{FlatPos, Position}
+import os.SubProcess
 
 import java.nio.file.attribute.PosixFilePermission
 
@@ -70,10 +70,18 @@ object Os_Ext {
 
   lazy val roots: ISZ[String] = ISZ((for (f <- java.io.File.listRoots) yield String(f.getCanonicalPath)).toIndexedSeq: _*)
 
-  lazy val downloadCommand: ISZ[String] =
-    if (proc"curl --version".run().ok) ISZ("curl", "-c", "/dev/null", "-JLso")
-    else if (proc"wget --version".run().ok) ISZ("wget", "-qO")
-    else ISZ()
+  lazy val downloadCommands: ISZ[ISZ[String]] = {
+    var r = ISZ[ISZ[String]]()
+    if (proc"curl --version".run().ok) {
+      r = r :+ ISZ("curl", "-c", "/dev/null", "-JLso")
+      r = r :+ ISZ("curl", "-c", "/dev/null", "-JLkso")
+    }
+    if (proc"wget --version".run().ok) {
+      r = r :+ ISZ("wget", "-qO")
+      r = r :+ ISZ("wget", "--no-check-certificate", "-qO")
+    }
+    r
+  }
 
   lazy val osKind: Os.Kind.Type = {
     val r = if (scala.util.Properties.isMac) Os.Kind.Mac
@@ -89,18 +97,20 @@ object Os_Ext {
 
   lazy val maxMemory: Z = Runtime.getRuntime.maxMemory
 
-  lazy val exe7zaOpt: Option[Os.Path] = {
-    val suffix7za: String = osKind match {
-      case Os.Kind.Win => "bin/win/7za.exe"
-      case Os.Kind.Mac => "bin/mac/7za"
-      case Os.Kind.Linux => "bin/linux/7za"
-      case Os.Kind.LinuxArm => "bin/linux/arm/7za"
-      case _ => "?"
-    }
-    Os.sireumHomeOpt match {
-      case Some(dir) if (dir / suffix7za).exists => Some(dir / suffix7za)
-      case _ => None()
-    }
+  lazy val p7zzOpt: Option[Os.Path] = Os.sireumHomeOpt match {
+    case Some(dir) =>
+      val p7zz: String = if (osKind == Os.Kind.Win) "7zz.com" else "7zz"
+      val p = dir / "bin" / p7zz
+      if (p.exists) {
+        if (osKind == Os.Kind.Win || osKind == Os.Kind.Mac) {
+          Some(p)
+        } else {
+          if (Os.proc(ISZ[String]("bash", "-c", s"$p7zz -h")).run().ok) Some(p) else None()
+        }
+      } else {
+        None()
+      }
+    case _ => None()
   }
 
   private lazy val permissions: Array[PosixFilePermission] = Array(
@@ -162,29 +172,36 @@ object Os_Ext {
   }
 
   def download(path: String, url: String): B = {
-    def nativ(): Unit = {
+    def nativ(): B = {
+      for (downloadCommand <- downloadCommands) {
+        removeAll(path)
+        if (Os.proc(downloadCommand :+ path :+ url).run().ok) {
+          return T
+        }
+      }
       if (Os.isWin) {
         val p = path.value.replace(' ', '␣')
-        proc"""powershell.exe -Command Invoke-WebRequest -Uri "$url" -OutFile "$p"""".runCheck()
-      } else {
-        if (downloadCommand.nonEmpty) Os.proc(downloadCommand :+ path :+ url).runCheck()
-        else halt("Either curl or wget is required")
+        if (proc"""powershell.exe -Command Invoke-WebRequest -Uri "$url" -OutFile "$p"""".run().ok) {
+          return T
+        }
       }
+      return F
     }
     def jvm(): Unit = {
+      removeAll(path)
       val cookieManager = new java.net.CookieManager()
       val default = java.net.CookieHandler.getDefault
       java.net.CookieHandler.setDefault(cookieManager)
 
       def fetch(loc: Predef.String): java.net.HttpURLConnection = {
-        val c = new java.net.URL(loc).openConnection().asInstanceOf[java.net.HttpURLConnection]
+        val c = new java.net.URI(loc).toURL.openConnection().asInstanceOf[java.net.HttpURLConnection]
         c.setInstanceFollowRedirects(false)
         c.setUseCaches(false)
         val responseCode = c.getResponseCode
         if (301 <= responseCode && responseCode <= 303 || responseCode == 307 || responseCode == 308) {
           var newLoc = c.getHeaderField("Location")
           if (newLoc.startsWith("/")) {
-            val locUrl = new java.net.URL(loc)
+            val locUrl = new java.net.URI(loc).toURL
             newLoc = s"${locUrl.getProtocol}://${locUrl.getHost}$newLoc"
           }
           fetch(newLoc)
@@ -198,19 +215,17 @@ object Os_Ext {
         java.net.CookieHandler.setDefault(default)
       }
     }
-    try {
-      if (isNative) {
-        nativ()
-      } else {
-        try {
-          jvm()
-        } catch {
-          case _: UnsatisfiedLinkError => nativ()
-        }
+    if (!nativ()) {
+      try {
+        jvm()
+        T
+      } catch {
+        case _: Throwable =>
+          removeAll(path)
+          F
       }
+    } else {
       T
-    } catch {
-      case _: Throwable => F
     }
   }
 
@@ -238,6 +253,12 @@ object Os_Ext {
   def isFile(path: String): B = toIO(path).isFile
 
   def isSymLink(path: String): B = JFiles.isSymbolicLink(toNIO(path))
+
+  def isExecutable(path: String): B = toIO(path).canExecute
+
+  def isReadable(path: String): B = toIO(path).canRead
+
+  def isWritable(path: String): B = toIO(path).canWrite
 
   def kind(path: String): Os.Path.Kind.Type = {
     val p = toNIO(path)
@@ -275,7 +296,7 @@ object Os_Ext {
     }
   }
 
-  def md5(path: String): String = digest(path, "MD5")
+  def md5(path: String): String = digest(path, "MD5", 0)
 
   def move(path: String, target: String, over: B): Unit = {
     val p = toNIO(path)
@@ -290,10 +311,16 @@ object Os_Ext {
       JFiles.move(p, t, SCO.ATOMIC_MOVE)
     } catch {
       case _: AtomicMoveNotSupportedException =>
-        if (Os.isWin) {
-          JFiles.move(p, t)
-        } else {
-          JFiles.move(p, t, SCO.COPY_ATTRIBUTES)
+        try {
+          if (Os.isWin) {
+            JFiles.move(p, t)
+          } else {
+            JFiles.move(p, t, SCO.COPY_ATTRIBUTES)
+          }
+        } catch {
+          case _: Exception =>
+            copy(path, target, F)
+            removeAll(path)
         }
     }
   }
@@ -355,10 +382,20 @@ object Os_Ext {
   }
 
   def readSymLink(path: String): Option[String] = {
-    try Some(JFiles.readSymbolicLink(toNIO(path)).toFile.getCanonicalPath)
-    catch {
-      case _: Throwable => None()
+    try {
+      var p = JFiles.readSymbolicLink(toNIO(path)).toFile
+      if (p.exists()) {
+        return Some(p.getCanonicalPath)
+      }
+      p = toNIO(path).toRealPath().toFile
+      if (p.exists()) {
+        return Some(p.getCanonicalPath)
+      }
     }
+    catch {
+      case _: Throwable =>
+    }
+    return None()
   }
 
   def relativize(path: String, other: String): String = {
@@ -529,7 +566,7 @@ object Os_Ext {
 
   def readIndexableCPath(path: String): Indexable.Pos[C] with AutoCloseable = readIndexableC(Some(toUri(path)), new FR(path.value))
 
-  def readIndexableCUrl(url: String): Indexable.Pos[C] with AutoCloseable = readIndexableC(Some(url), new ISR(new java.net.URL(url.value).openStream()))
+  def readIndexableCUrl(url: String): Indexable.Pos[C] with AutoCloseable = readIndexableC(Some(url), new ISR(new java.net.URI(url.value).toURL.openStream()))
 
   def readIndexableC(uriOpt: Option[String], reader: java.io.Reader): Indexable.Pos[C] with AutoCloseable = new Indexable.Pos[C] with AutoCloseable {
     import org.sireum.U32._
@@ -642,6 +679,14 @@ object Os_Ext {
         case _ => proc"""sh -c rm␣-fR␣"$p"""".run()
       }
     } else try {
+      if (Os.isWin) {
+        val f = toIO(path)
+        if (!f.canWrite) try {
+          f.setWritable(false)
+        } catch {
+          case _: Throwable =>
+        }
+      }
       remove(path)
     } catch {
       case _: Throwable =>
@@ -652,7 +697,31 @@ object Os_Ext {
     toIO(path).deleteOnExit()
   }
 
-  def sha1(path: String): String = digest(path, "SHA1")
+  def setLastModified(path: String, millis: Z): Unit = try toIO(path).setLastModified(millis.toLong) catch {
+    case _: Throwable =>
+  }
+
+  def setExecutable(path: String, value: B): B = {
+    try toIO(path).setExecutable(value.value) catch {
+      case _: Throwable => F
+    }
+  }
+
+  def setReadable(path: String, value: B): B = {
+    try toIO(path).setReadable(value.value) catch {
+      case _: Throwable => F
+    }
+  }
+
+  def setWritable(path: String, value: B): B = {
+    try toIO(path).setWritable(value.value) catch {
+      case _: Throwable => F
+    }
+  }
+
+  def sha1(path: String): String = digest(path, "SHA1", 0)
+
+  def sha3(path: String, numOfBytes: Z): String = digest(path, "SHA3-512", numOfBytes)
 
   def slashDir: String = {
     try if (isNative) return parent(Class.forName("org.graalvm.nativeimage.ProcessProperties").
@@ -688,7 +757,7 @@ object Os_Ext {
   def unTarGz(path: String, target: String): Unit = {
     if (hasTar) {
       mkdir(target, T)
-      proc"tar xfz $path".at(Os.path(target)).runCheck()
+      proc"tar xfz ${Os.path(path)}".at(Os.path(target)).runCheck()
       return
     }
     def posixPermissionsFromMode(mode: Int): java.util.Set[PosixFilePermission] = {
@@ -727,9 +796,12 @@ object Os_Ext {
   }
 
   def zip(path: String, target: String): Unit = {
-    exe7zaOpt match {
+    p7zzOpt match {
       case Some(p) =>
-        proc"$p a -r $target .".at(Os.path(path)).runCheck()
+        Os.proc(
+            if (Os.isWin) ISZ[String]("cmd", "/C", p.name, "a", "-r", target, ".")
+            else ISZ[String]("bash", "-c", s"${p.name} a -r \"$target\" .")).
+          env(ISZ("PATH" ~> s"${p.up.canon}${Os.pathSep}${Os.env("PATH")}")).at(Os.path(path)).runCheck()
         return
       case _ =>
     }
@@ -754,18 +826,21 @@ object Os_Ext {
   }
 
   def unzip(path: String, target: String): Unit = {
-    exe7zaOpt match {
+    p7zzOpt match {
       case Some(p) =>
         val t = Os.path(target)
         t.mkdirAll()
-        proc"$p x -aoa $path".at(t).runCheck()
+        Os.proc(
+            if (Os.isWin) ISZ[String]("cmd", "/C", p.name, "x", "-aoa", path)
+            else ISZ[String]("bash", "-c", s"${p.name} x -aoa \"$path\"")).
+          env(ISZ("PATH" ~> s"${p.up.canon}${Os.pathSep}${Os.env("PATH")}")).at(t).runCheck()
         return
       case _ =>
     }
     val zis = new ZIS(new BIS(JFiles.newInputStream(toNIO(path)), buffSize))
     try {
       val t = toNIO(target)
-      for (file <- CollectionCompat.LazyList.continually(zis.getNextEntry).takeWhile(_ != null)) {
+      for (file <- $internal.CollectionCompat.LazyList.continually(zis.getNextEntry).takeWhile(_ != null)) {
         if (!file.isDirectory) {
           val p = t.resolve(file.getName)
           p.getParent.toFile.mkdirs()
@@ -888,6 +963,29 @@ object Os_Ext {
     return p
   }
 
+  final class ProcessOutput(sink: (Array[Byte], Int) => Unit) extends _root_.os.ProcessOutput {
+
+    override def redirectTo: ProcessBuilder.Redirect = ProcessBuilder.Redirect.PIPE
+
+    override def processOutput(src: => SubProcess.OutputStream): scala.Option[Runnable] = scala.Some(
+      () => try {
+        val buffer = new Array[Byte](8192)
+        var r = 0
+        while (r != -1) {
+          r = src.read(buffer)
+          if (r != -1) sink(buffer, r)
+        }
+      } catch {
+        case _: Throwable =>
+      } finally {
+        try src.close() catch {
+          case _: Throwable =>
+        }
+      }
+    )
+
+  }
+
   final class ProcOutput(p: Os.Proc) {
     val out = new java.io.ByteArrayOutputStream()
     val err = new java.io.ByteArrayOutputStream()
@@ -945,7 +1043,7 @@ object Os_Ext {
             val ss = s.split('\n')
             for (i <- 0 until ss.length - 1) {
               val line = ss(i)
-              if (la(line).asInstanceOf[B]) {
+              if (la.filter(line)) {
                 if (shouldOutputConsole) {
                   pw.println(line)
                   pw.flush()
@@ -958,7 +1056,7 @@ object Os_Ext {
             baosLine.reset()
             baos.write(line.getBytes(SC.UTF_8))
             if (bytes(n - 1) == newLine) {
-              if (la(line).asInstanceOf[B]) {
+              if (la.filter(line)) {
                 if (shouldOutputConsole) {
                   pw.println(line)
                   pw.flush()
@@ -990,7 +1088,7 @@ object Os_Ext {
           m(key) = value
         }
       }
-      for ((k, v) <- p.envMap.entries.elements) {
+      for ((k, v) <- p.envMap) {
         m(k.value) = v.value
       }
       if (p.shouldPrintEnv) {
@@ -1002,35 +1100,42 @@ object Os_Ext {
         println(p.cmds.elements.mkString(" "))
       }
       val po = new ProcOutput(p)
-      val pOut = _root_.os.ProcessOutput(po.fOut)
-      def pErr: _root_.os.ProcessOutput =
-        if (p.isErrAsOut) pOut else _root_.os.ProcessOutput(po.fErr)
+      val pOut = new ProcessOutput(po.fOut)
+      def pErr = if (p.isErrAsOut) pOut else new ProcessOutput(po.fErr)
       val stdin: _root_.os.ProcessInput = p.in match {
-        case Some(s) => s.value
+        case Some(s) => new os.ProcessInput {
+          val r: os.Source = s.value
+          def redirectFrom: ProcessBuilder.Redirect = ProcessBuilder.Redirect.PIPE
+          def processInput(stdin: => SubProcess.InputStream): scala.Option[Runnable] = scala.Some(() => {
+            try {
+              r.writeBytesTo(stdin)
+            } catch {
+              case _: Throwable =>
+            } finally {
+              try stdin.close() catch {
+                case _: Throwable =>
+              }
+            }
+          })
+        }
         case _ => _root_.os.Inherit
       }
       val sp = _root_.os.proc(p.cmds.elements.map(_.value: _root_.os.Shellable)).
         spawn(cwd = _root_.os.Path(toIO(p.wd.value).getCanonicalPath),
           env = m.toMap, stdin = stdin, stdout = pOut, stderr = pErr,
           mergeErrIntoOut = p.isErrAsOut, propagateEnv = false)
-      var term: Boolean = false
-      term = sp.join(if (p.timeoutInMillis > 0) p.timeoutInMillis.toLong else -1)
-      if (term) {
-        val (pout, perr) = po.fEnd()
-        return Os.Proc.Result.Normal(sp.exitCode(), pout, perr)
+      try {
+        var term: Boolean = false
+        term = sp.join(if (p.timeoutInMillis > 0) p.timeoutInMillis.toLong else -1)
+        if (term) {
+          val (pout, perr) = po.fEnd()
+          return Os.Proc.Result.Normal(sp.exitCode(), pout, perr)
+        }
+      } catch {
+        case _: InterruptedException =>
       }
       if (sp.isAlive()) {
-        try {
-          sp.destroy()
-          sp.wrapped.waitFor(500, TU.MICROSECONDS)
-        } catch {
-          case _: Throwable =>
-        }
-        if (sp.isAlive())
-          try sp.destroyForcibly()
-          catch {
-            case _: Throwable =>
-          }
+        sp.destroy(shutdownGracePeriod = 500, async = true)
       }
       val (pout, perr) = po.fEnd()
       Os.Proc.Result.Timeout(pout, perr)
@@ -1043,7 +1148,7 @@ object Os_Ext {
           m(key) = value
         }
       }
-      for ((k, v) <- p.envMap.entries.elements) {
+      for ((k, v) <- p.envMap) {
         val key = k.toString
         val value = v.toString
         m(key) = value
@@ -1083,10 +1188,14 @@ object Os_Ext {
             np.closeStdin(false)
           case _ =>
         }
-        val exitCode = np.waitFor(if (p.timeoutInMillis > 0) p.timeoutInMillis.toLong else 0, TU.MILLISECONDS)
-        if (exitCode != scala.Int.MinValue) {
-          val (pout, perr) = po.fEnd()
-          return Os.Proc.Result.Normal(exitCode, pout, perr)
+        try {
+          val exitCode = np.waitFor(if (p.timeoutInMillis > 0) p.timeoutInMillis.toLong else 0, TU.MILLISECONDS)
+          if (exitCode != scala.Int.MinValue) {
+            val (pout, perr) = po.fEnd()
+            return Os.Proc.Result.Normal(exitCode, pout, perr)
+          }
+        } catch {
+          case _: InterruptedException =>
         }
         if (np.isRunning) try {
           np.destroy(false)
@@ -1139,10 +1248,11 @@ object Os_Ext {
 
   def size(path: String): Z = toIO(path).length
 
-  private def digest(path: String, name: String): String = {
+  private def digest(path: String, name: String, numOfBytes: Z): String = {
     val md = java.security.MessageDigest.getInstance(name.value)
     val digest = md.digest(readU8s(path).elements.map(_.value).toArray)
-    st"${(for (d <- digest) yield U8(d)).toSeq}".render.value.toLowerCase
+    val s = ISZ((for (d <- digest) yield U8(d)).toSeq: _*)
+    st"${(if (numOfBytes > 0) Jen.IS(s).take(numOfBytes).toISZ else s, "")}".render.value.toLowerCase
   }
 
   private def toIO(path: String): JFile = new JFile(path.value)

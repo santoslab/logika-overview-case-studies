@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -44,26 +44,31 @@ object StepProofContext {
                           val exp: AST.Exp) extends StepProofContext {
     @strictpure override def prettyST: ST = st"(${stepNo.prettyST}, ${exp.prettyST})"
     @memoize def coreExpClaim: AST.CoreExp.Base = {
-      return RewritingSystem.translateExp(th, F, exp)
+      return th.translateToBaseCoreExp(exp, F)
     }
   }
 
   @datatype class SubProof(val stepNo: AST.ProofAst.StepId,
                            val assumption: AST.Exp,
-                           val claims: ISZ[AST.Exp]) extends StepProofContext {
+                           val claims: ISZ[AST.Exp],
+                           val spcs: ISZ[StepProofContext]) extends StepProofContext {
     @strictpure override def prettyST: ST = st"(${stepNo.prettyST}, ${assumption.prettyST}, ${(for (claim <- claims) yield claim.prettyST, ", ")})"
   }
 
   @datatype class FreshSubProof(val stepNo: AST.ProofAst.StepId,
+                                val context: ISZ[String],
                                 val params: ISZ[AST.ProofAst.Step.Let.Param],
-                                val claims: ISZ[AST.Exp]) extends StepProofContext {
+                                val claims: ISZ[AST.Exp],
+                                val spcs: ISZ[StepProofContext]) extends StepProofContext {
     @strictpure override def prettyST: ST = st"(${stepNo.prettyST}, ${(for (param <- params) yield param.prettyST, ", ")}, ${(for (claim <- claims) yield claim.prettyST, ", ")})"
   }
 
   @datatype class FreshAssumeSubProof(val stepNo: AST.ProofAst.StepId,
+                                      val context: ISZ[String],
                                       val params: ISZ[AST.ProofAst.Step.Let.Param],
                                       val assumption: AST.Exp,
-                                      val claims: ISZ[AST.Exp]) extends StepProofContext {
+                                      val claims: ISZ[AST.Exp],
+                                      val spcs: ISZ[StepProofContext]) extends StepProofContext {
     @strictpure override def prettyST: ST = st"(${stepNo.prettyST}, ${(for (param <- params) yield param.prettyST, ", ")}, ${assumption.prettyST}, ${(for (claim <- claims) yield claim.prettyST, ", ")})"
   }
 

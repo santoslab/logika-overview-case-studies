@@ -1,6 +1,6 @@
 // #Sireum
 /*
- * Copyright (c) 2017-2024, Robby, Kansas State University
+ * Copyright (c) 2017-2025, Robby, Kansas State University
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,7 +24,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package org.sireum
+package org.sireum.test
+
+import org.sireum._
 
 object MemoizeFoo {
   @memoize def foo(x: Z, @hidden f: () => Unit): Z = {

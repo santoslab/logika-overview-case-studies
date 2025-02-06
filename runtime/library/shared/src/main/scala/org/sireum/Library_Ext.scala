@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -50,6 +50,15 @@ object Library_Ext {
     } else false
   }
 
+  def fontMap: scala.collection.SortedMap[scala.Vector[Predef.String], Predef.String] = RC.base64(Vector("../../../../../../../../resources/fonts/ttf")) { (p, f) =>
+    p.last.endsWith("-Regular.ttf")
+  }
+
+  def vscodeImageMap: scala.collection.SortedMap[scala.Vector[Predef.String], Predef.String] = RC.base64(Vector("../../../../../../../../resources/distro/icons")) { (p, f) =>
+    val name = p.last
+    name.startsWith("code") || name.startsWith("letterpress") || name == "favicon.ico" || name == "VSCodium.icns"
+  }
+
   def trie: Trie.Node[Predef.String, Predef.String] = RC.toTrie(sharedMap ++ jvmMap)
 
   def sharedFiles: ISZ[(Option[String], String)] =
@@ -58,6 +67,14 @@ object Library_Ext {
 
   def jvmFiles: ISZ[(Option[String], String)] =
     ISZ(jvmMap.toSeq.
+      map(p => (Some(String(p._1.mkString("/"))), String(p._2))): _*)
+
+  def fontFiles: ISZ[(Option[String], String)] =
+    ISZ(fontMap.toSeq.
+      map(p => (Some(String(p._1.mkString("/"))), String(p._2))): _*)
+
+  def vscodeImageFiles: ISZ[(Option[String], String)] =
+    ISZ(vscodeImageMap.toSeq.
       map(p => (Some(String(p._1.mkString("/"))), String(p._2))): _*)
 
   def files: ISZ[(Option[String], String)] = sharedFiles ++ jvmFiles

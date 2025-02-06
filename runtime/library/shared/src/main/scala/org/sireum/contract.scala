@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -311,7 +311,7 @@ trait contract {
       def #>(subProof: SubProof): ProofStep
       def apply(cond: B): StepBuilder2
       def Assume(cond: B): ProofStep
-      def Assert(cond: B): ProofStep
+      def Assert(cond: B, subProof: SubProof): ProofStep
       def Let[T](body: T => Contract.SubProof): ProofStep
       def Let[T1, T2](body: (T1, T2) => Contract.SubProof): ProofStep
       def Let[T1, T2, T3](body: (T1, T2, T3) => Contract.SubProof): ProofStep

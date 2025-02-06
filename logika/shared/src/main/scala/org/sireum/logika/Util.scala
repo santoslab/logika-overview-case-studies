@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -652,7 +652,14 @@ object Util {
     }
 
     @pure def equateOpt(t: AST.Typed, e1: AST.Exp, e2: AST.Exp): Option[AST.Exp] = {
-      return if (e1 == e2) None() else Some(equate(t, e1, e2))
+      if (e1 != e2) {
+        e2 match {
+          case AST.Exp.At(_, AST.Exp.LitString(".temp"), _, _) if e1.isInstanceOf[AST.Exp.Result] =>
+          case _ =>
+            return Some(equate(t, e1, e2))
+        }
+      }
+      return None()
     }
 
     @pure def simplify(cs: ISZ[AST.Exp]): ISZ[AST.Exp] = {
@@ -1448,6 +1455,8 @@ object Util {
       val rOpt = letToExpH()
       rOpt match {
         case Some(e) => e match {
+          case e: AST.Exp.Invoke if e.receiverOpt.nonEmpty && e.targs.isEmpty && e.args.size == 1 && ops.StringOps(e.ident.id.value).isScalaOp =>
+            return Some(AST.Exp.Binary(e.receiverOpt.get, e.ident.id.value, e.args(0), e.attr, e.ident.posOpt))
           case e: AST.Exp.Select => e.resOpt match {
             case Some(res: AST.ResolvedInfo.Method) if res.tpeOpt.get.isByName =>
               e(attr = e.attr(typedOpt = Some(res.tpeOpt.get.ret)))
@@ -1827,7 +1836,7 @@ object Util {
       var cacheHit = F
       if (logika.config.transitionCache) {
         cache.getTransitionAndUpdateSmt2(logika.th, logika.config, Logika.Cache.Transition.Exp(r), logika.context.methodName, s, smt2) match {
-          case Some((ISZ(nextState), cached)) =>
+          case Some((ISZ(nextState), cached, _)) =>
             cacheHit = T
             reporter.coverage(F, cached, r.posOpt.get)
             s = nextState
@@ -1838,7 +1847,7 @@ object Util {
         val s0 = s
         s = logika.evalAssume(smt2, cache, T, "Precondition", s, r, r.posOpt, reporter)._1
         if (logika.config.transitionCache && s.ok) {
-          val cached = cache.setTransition(logika.th, logika.config, Logika.Cache.Transition.Exp(r), logika.context.methodName, s0, ISZ(s), smt2)
+          val cached = cache.setTransition(logika.th, logika.config, Logika.Cache.Transition.Exp(r), logika.context.methodName, s0, ISZ(s), smt2, HashSet.empty)
           reporter.coverage(T, cached, r.posOpt.get)
         } else {
           reporter.coverage(F, Logika.zeroU64, r.posOpt.get)
@@ -1871,7 +1880,7 @@ object Util {
           var cacheHit = F
           if (logika.config.transitionCache) {
             cache.getTransitionAndUpdateSmt2(logika.th, logika.config, Logika.Cache.Transition.Exp(e), logika.context.methodName, s, smt2) match {
-              case Some((ISZ(nextState), cached)) =>
+              case Some((ISZ(nextState), cached, _)) =>
                 cacheHit = T
                 reporter.coverage(F, cached, e.posOpt.get)
                 s = nextState
@@ -1882,7 +1891,7 @@ object Util {
             val s0 = s
             s = logika.evalAssert(smt2, cache, T, "Postcondition", s, e, e.posOpt, rwLocals, reporter)._1
             if (logika.config.transitionCache && s.ok) {
-              val cached = cache.setTransition(logika.th, logika.config, Logika.Cache.Transition.Exp(e), logika.context.methodName, s0, ISZ(s), smt2)
+              val cached = cache.setTransition(logika.th, logika.config, Logika.Cache.Transition.Exp(e), logika.context.methodName, s0, ISZ(s), smt2, HashSet.empty)
               reporter.coverage(T, cached, e.posOpt.get)
             } else {
               reporter.coverage(F, Logika.zeroU64, e.posOpt.get)
@@ -2564,7 +2573,7 @@ object Util {
     if (logika.config.transitionCache) {
       cache.getTransitionAndUpdateSmt2(logika.th, logika.config,
         Logika.Cache.Transition.Stmts(for (inv <- invs) yield inv.ast), logika.context.methodName, s0, smt2) match {
-        case Some((ISZ(nextState), cached)) =>
+        case Some((ISZ(nextState), cached, _)) =>
           for (inv <- invs) {
             reporter.coverage(F, cached, inv.posOpt.get)
           }
@@ -2613,7 +2622,7 @@ object Util {
     }
     if (logika.config.transitionCache && s4.ok) {
       val cached = cache.setTransition(logika.th, logika.config,
-        Logika.Cache.Transition.Stmts(for (inv <- invs) yield inv.ast), logika.context.methodName, s0, ISZ(s4), smt2)
+        Logika.Cache.Transition.Stmts(for (inv <- invs) yield inv.ast), logika.context.methodName, s0, ISZ(s4), smt2, HashSet.empty)
       for (inv <- invs) {
         reporter.coverage(T, cached, inv.posOpt.get)
       }
@@ -2864,7 +2873,7 @@ object Util {
                   Logika.Cache.Transition.StmtExps(stmt, context.methodOpt.get.ensures)
                 else Logika.Cache.Transition.Stmt(stmt)
                 cache.getTransitionAndUpdateSmt2(logika.th, logika.config, transition, logika.context.methodName, currentNoOld, smt2) match {
-                  case Some((ss, cached)) =>
+                  case Some((ss, cached, modifiables)) =>
                     if (stmt.isInstruction) {
                       reporter.coverage(F, cached, stmt.posOpt.get)
                       if (stmt.isInstanceOf[AST.Stmt.Return]) {
@@ -2873,6 +2882,7 @@ object Util {
                         }
                       }
                     }
+                    logika = logika(context = logika.context(modifiableIds = modifiables))
                     ss
                   case _ =>
                     if (stmt.isInstruction) {
@@ -2881,7 +2891,7 @@ object Util {
                     val (l2, ss) = logika.evalStmt(split, smt2, cache, rtCheck, currentNoOld, stmts(i), reporter)
                     logika = l2
                     if (!reporter.hasError && ops.ISZOps(ss).forall((s: State) => s.status != State.Status.Error)) {
-                      val cached = cache.setTransition(logika.th, logika.config, transition, logika.context.methodName, currentNoOld, ss, smt2)
+                      val cached = cache.setTransition(logika.th, logika.config, transition, logika.context.methodName, currentNoOld, ss, smt2, logika.context.modifiableIds)
                       if (stmt.isInstruction) {
                         reporter.coverage(T, cached, stmt.posOpt.get)
                         if (stmt.isInstanceOf[AST.Stmt.Return]) {
@@ -2930,6 +2940,8 @@ object Util {
     if (mi.ast.isStrictPure && mi.ast.bodyOpt.nonEmpty) {
       mi.ast.bodyOpt.get.stmts match {
         case ISZ(stmt: AST.Stmt.Var, _: AST.Stmt.Return) => return stmt.initOpt
+        case ISZ(stmt: AST.Stmt.Return) => return Some(AST.Stmt.Expr(stmt.expOpt.get, stmt.attr))
+        case ISZ(stmt: AST.Stmt.Expr) => return Some(stmt)
         case stmts => halt(s"Infeasible: $stmts")
       }
     } else {

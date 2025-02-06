@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -379,7 +379,11 @@ object ProjectUtil {
       }
       if (!loaded) {
         println(s"Loading from $cmdFile ...")
-        val pr = proc"$cmdFile json".redirectErr.run()
+        val cmds: ISZ[String] =
+          if (Os.isWin) ISZ[String]("cmd", "/C", cmdFile.name, "json")
+          else ISZ[String]("bash", "-c", s""""${cmdFile.canon.string}" json""")
+        val pr = Os.proc(cmds).at(cmdFile.up.canon).env(ISZ("SIREUM_HOME" ~> Os.sireumHomeOpt.get.string)).
+          console.outLineAction((s: String) => project.ProjectUtil.projectJsonLine(s).isEmpty).run()
         if (pr.ok) {
           projectJsonLine(pr.out) match {
             case Some(line) => JSON.toProject(line) match {

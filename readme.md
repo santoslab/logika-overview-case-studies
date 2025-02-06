@@ -5,14 +5,15 @@ This repository contains the projects that were used as Logika case studies. The
 For Linux or macOS
 
 ```
-(DIR=Sireum && export SIREUM_V=4.20240508.f1c262c && rm -fR $DIR && mkdir -p $DIR/bin && cd $DIR/bin && curl -JLso init.sh https://raw.githubusercontent.com/sireum/kekinian/$SIREUM_V/bin/init.sh && bash init.sh)
+(DIR=Sireum && export SIREUM_V=4.20250124.83153a7 && rm -fR $DIR && mkdir -p $DIR/bin && cd $DIR/bin && curl -JLso init.sh https://raw.githubusercontent.com/sireum/kekinian/$SIREUM_V/bin/init.sh && bash init.sh)
 export SIREUM_HOME=$(pwd)/Sireum
 export PATH=$SIREUM_HOME/bin:$PATH
 ```
 
 or for Windows
 ```
-cmd /V /C "set DIR=Sireum&& set SIREUM_V=4.20240508.f1c262c&& (if exist !DIR! rd /S /Q !DIR!) && md !DIR!\bin && cd !DIR!\bin && curl -JLso init.bat https://raw.githubusercontent.com/sireum/kekinian/!SIREUM_V!/bin/init.bat && init.bat"
+⧉
+cmd /V /C "set DIR=Sireum&& set SIREUM_V=4.20250121.1d0c4b2 && (if exist !DIR! rd /S /Q !DIR!) && md !DIR!\bin && cd !DIR!\bin && curl -JLso init.bat https://raw.githubusercontent.com/sireum/kekinian/!SIREUM_V!/bin/init.bat && init.bat"
 set SIREUM_HOME=%cd%\Sireum
 set PATH=%SIREUM_HOME%\bin;%PATH%
 ```
@@ -35,22 +36,27 @@ The following details how to run Logika on each project using the different conf
 ### SLANGRT
 **-P-B-S**
 ```
-sireum proyek logika --sat --stats runtime runtime/library/shared/src/main/scala/org/sireum/AssocS.scala runtime/library/shared/src/main/scala/org/sireum/Either.scala runtime/library/shared/src/main/scala/org/sireum/IndexMap.scala runtime/library/shared/src/main/scala/org/sireum/MEither.scala runtime/library/shared/src/main/scala/org/sireum/MOption.scala runtime/library/shared/src/main/scala/org/sireum/Map.scala runtime/library/shared/src/main/scala/org/sireum/Option.scala runtime/library/shared/src/main/scala/org/sireum/Set.scala runtime/library/shared/src/main/scala/org/sireum/justification.scala
+sireum proyek logika --smt2-seq --sat --stats runtime runtime/library/shared/src/main/scala/org/sireum/AssocS.scala runtime/library/shared/src/main/scala/org/sireum/Either.scala runtime/library/shared/src/main/scala/org/sireum/IndexMap.scala runtime/library/shared/src/main/scala/org/sireum/MEither.scala runtime/library/shared/src/main/scala/org/sireum/MOption.scala runtime/library/shared/src/main/scala/org/sireum/Map.scala runtime/library/shared/src/main/scala/org/sireum/Option.scala runtime/library/shared/src/main/scala/org/sireum/Set.scala runtime/library/shared/src/main/scala/org/sireum/justification.scala
 ```
 
 **+P-B-S**
+```
+sireum proyek logika --par --smt2-seq --sat --stats runtime runtime/library/shared/src/main/scala/org/sireum/AssocS.scala runtime/library/shared/src/main/scala/org/sireum/Either.scala runtime/library/shared/src/main/scala/org/sireum/IndexMap.scala runtime/library/shared/src/main/scala/org/sireum/MEither.scala runtime/library/shared/src/main/scala/org/sireum/MOption.scala runtime/library/shared/src/main/scala/org/sireum/Map.scala runtime/library/shared/src/main/scala/org/sireum/Option.scala runtime/library/shared/src/main/scala/org/sireum/Set.scala runtime/library/shared/src/main/scala/org/sireum/justification.scala
+```
+
+**+P-B+S**
 ```
 sireum proyek logika --par --sat --stats runtime runtime/library/shared/src/main/scala/org/sireum/AssocS.scala runtime/library/shared/src/main/scala/org/sireum/Either.scala runtime/library/shared/src/main/scala/org/sireum/IndexMap.scala runtime/library/shared/src/main/scala/org/sireum/MEither.scala runtime/library/shared/src/main/scala/org/sireum/MOption.scala runtime/library/shared/src/main/scala/org/sireum/Map.scala runtime/library/shared/src/main/scala/org/sireum/Option.scala runtime/library/shared/src/main/scala/org/sireum/Set.scala runtime/library/shared/src/main/scala/org/sireum/justification.scala
 ```
 
 **+P+B-S**
 ```
-sireum proyek logika --par --par-branch --sat --stats runtime runtime/library/shared/src/main/scala/org/sireum/AssocS.scala runtime/library/shared/src/main/scala/org/sireum/Either.scala runtime/library/shared/src/main/scala/org/sireum/IndexMap.scala runtime/library/shared/src/main/scala/org/sireum/MEither.scala runtime/library/shared/src/main/scala/org/sireum/MOption.scala runtime/library/shared/src/main/scala/org/sireum/Map.scala runtime/library/shared/src/main/scala/org/sireum/Option.scala runtime/library/shared/src/main/scala/org/sireum/Set.scala runtime/library/shared/src/main/scala/org/sireum/justification.scala
+sireum proyek logika --par --par-branch --smt2-seq --sat --stats runtime runtime/library/shared/src/main/scala/org/sireum/AssocS.scala runtime/library/shared/src/main/scala/org/sireum/Either.scala runtime/library/shared/src/main/scala/org/sireum/IndexMap.scala runtime/library/shared/src/main/scala/org/sireum/MEither.scala runtime/library/shared/src/main/scala/org/sireum/MOption.scala runtime/library/shared/src/main/scala/org/sireum/Map.scala runtime/library/shared/src/main/scala/org/sireum/Option.scala runtime/library/shared/src/main/scala/org/sireum/Set.scala runtime/library/shared/src/main/scala/org/sireum/justification.scala
 ```
 
 **+P+B+S**
 ```
-sireum proyek logika --par --par-branch --smt2-seq --sat --stats runtime runtime/library/shared/src/main/scala/org/sireum/AssocS.scala runtime/library/shared/src/main/scala/org/sireum/Either.scala runtime/library/shared/src/main/scala/org/sireum/IndexMap.scala runtime/library/shared/src/main/scala/org/sireum/MEither.scala runtime/library/shared/src/main/scala/org/sireum/MOption.scala runtime/library/shared/src/main/scala/org/sireum/Map.scala runtime/library/shared/src/main/scala/org/sireum/Option.scala runtime/library/shared/src/main/scala/org/sireum/Set.scala runtime/library/shared/src/main/scala/org/sireum/justification.scala
+sireum proyek logika --par --par-branch --sat --stats runtime runtime/library/shared/src/main/scala/org/sireum/AssocS.scala runtime/library/shared/src/main/scala/org/sireum/Either.scala runtime/library/shared/src/main/scala/org/sireum/IndexMap.scala runtime/library/shared/src/main/scala/org/sireum/MEither.scala runtime/library/shared/src/main/scala/org/sireum/MOption.scala runtime/library/shared/src/main/scala/org/sireum/Map.scala runtime/library/shared/src/main/scala/org/sireum/Option.scala runtime/library/shared/src/main/scala/org/sireum/Set.scala runtime/library/shared/src/main/scala/org/sireum/justification.scala
 ```
 
 **Sources**
@@ -68,22 +74,27 @@ sireum proyek logika --par --par-branch --smt2-seq --sat --stats runtime runtime
 ### OPSEM-R
 **-P-B-S**
 ```
-sireum logika verifier --sat --stats logika/jvm/src/test/scala/org/sireum/logika/example/opsem.sc
+sireum logika verifier --smt2-seq --sat --stats logika/jvm/src/test/scala/org/sireum/logika/example/opsem.sc
 ```
 
 **+P-B-S**
+```
+sireum logika verifier --par --smt2-seq --sat --stats logika/jvm/src/test/scala/org/sireum/logika/example/opsem.sc
+```
+
+**+P-B+S**
 ```
 sireum logika verifier --par --sat --stats logika/jvm/src/test/scala/org/sireum/logika/example/opsem.sc
 ```
 
 **+P+B-S**
 ```
-sireum logika verifier --par --par-branch --sat --stats logika/jvm/src/test/scala/org/sireum/logika/example/opsem.sc
+sireum logika verifier --par --par-branch --smt2-seq --sat --stats logika/jvm/src/test/scala/org/sireum/logika/example/opsem.sc
 ```
 
 **+P+B+S**
 ```
-sireum logika verifier --par --par-branch --smt2-seq --sat --stats logika/jvm/src/test/scala/org/sireum/logika/example/opsem.sc
+sireum logika verifier --par --par-branch --sat --stats logika/jvm/src/test/scala/org/sireum/logika/example/opsem.sc
 ```
 
 **Sources**
@@ -93,22 +104,27 @@ sireum logika verifier --par --par-branch --smt2-seq --sat --stats logika/jvm/sr
 ### HAMR-R
 **-P-B-S**
 ```
-sireum logika verifier --sat --stats Hamr-R/HAMR-R.sc
+sireum logika verifier --smt2-seq --sat --stats Hamr-R/HAMR-R.sc
 ```
 
 **+P-B-S**
+```
+sireum logika verifier --par --smt2-seq --sat --stats Hamr-R/HAMR-R.sc
+```
+
+**+P-B+S**
 ```
 sireum logika verifier --par --sat --stats Hamr-R/HAMR-R.sc
 ```
 
 **+P+B-S**
 ```
-sireum logika verifier --par --par-branch --sat --stats Hamr-R/HAMR-R.sc
+sireum logika verifier --par --par-branch --smt2-seq --sat --stats Hamr-R/HAMR-R.sc
 ```
 
 **+P+B+S**
 ```
-sireum logika verifier --par --par-branch --smt2-seq --sat --stats Hamr-R/HAMR-R.sc
+sireum logika verifier --par --par-branch --sat --stats Hamr-R/HAMR-R.sc
 ```
 
 **Sources**
@@ -121,22 +137,27 @@ sireum logika verifier --par --par-branch --smt2-seq --sat --stats Hamr-R/HAMR-R
 
 **-P-B-S**
 ```
-sireum proyek logika --sat --stats tctrl/hamr/slang tctrl/hamr/slang/src/main/component/tc/TempControlSoftwareSystem/TempControlPeriodic_p_tcproc_tempControl.scala tctrl/hamr/slang/src/main/component/tc/TempSensor/TempSensorPeriodic_p_tcproc_tempSensor.scala
+sireum proyek logika --smt2-seq --sat --stats tctrl/hamr/slang tctrl/hamr/slang/src/main/component/tc/TempControlSoftwareSystem/TempControlPeriodic_p_tcproc_tempControl.scala tctrl/hamr/slang/src/main/component/tc/TempSensor/TempSensorPeriodic_p_tcproc_tempSensor.scala
 ```
 
 **+P-B-S**
+```
+sireum proyek logika --par --smt2-seq --sat --stats tctrl/hamr/slang tctrl/hamr/slang/src/main/component/tc/TempControlSoftwareSystem/TempControlPeriodic_p_tcproc_tempControl.scala tctrl/hamr/slang/src/main/component/tc/TempSensor/TempSensorPeriodic_p_tcproc_tempSensor.scala
+```
+
+**+P-B+S**
 ```
 sireum proyek logika --par --sat --stats tctrl/hamr/slang tctrl/hamr/slang/src/main/component/tc/TempControlSoftwareSystem/TempControlPeriodic_p_tcproc_tempControl.scala tctrl/hamr/slang/src/main/component/tc/TempSensor/TempSensorPeriodic_p_tcproc_tempSensor.scala
 ```
 
 **+P+B-S**
 ```
-sireum proyek logika --par --par-branch --sat --stats tctrl/hamr/slang tctrl/hamr/slang/src/main/component/tc/TempControlSoftwareSystem/TempControlPeriodic_p_tcproc_tempControl.scala tctrl/hamr/slang/src/main/component/tc/TempSensor/TempSensorPeriodic_p_tcproc_tempSensor.scala
+sireum proyek logika --par --par-branch --smt2-seq --sat --stats tctrl/hamr/slang tctrl/hamr/slang/src/main/component/tc/TempControlSoftwareSystem/TempControlPeriodic_p_tcproc_tempControl.scala tctrl/hamr/slang/src/main/component/tc/TempSensor/TempSensorPeriodic_p_tcproc_tempSensor.scala
 ```
 
 **+P+B+S**
 ```
-sireum proyek logika --par --par-branch --smt2-seq --sat --stats tctrl/hamr/slang tctrl/hamr/slang/src/main/component/tc/TempControlSoftwareSystem/TempControlPeriodic_p_tcproc_tempControl.scala tctrl/hamr/slang/src/main/component/tc/TempSensor/TempSensorPeriodic_p_tcproc_tempSensor.scala
+sireum proyek logika --par --par-branch --sat --stats tctrl/hamr/slang tctrl/hamr/slang/src/main/component/tc/TempControlSoftwareSystem/TempControlPeriodic_p_tcproc_tempControl.scala tctrl/hamr/slang/src/main/component/tc/TempSensor/TempSensorPeriodic_p_tcproc_tempSensor.scala
 ```
 
 **Sources**
@@ -156,22 +177,27 @@ sireum proyek logika --par --par-branch --smt2-seq --sat --stats tctrl/hamr/slan
 
 **-P-B-S**
 ```
-sireum proyek logika --sat --stats isolette/hamr/slang isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Alarm_impl_thermostat_monitor_temperature_manage_alarm.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Interface_impl_thermostat_monitor_temperature_manage_monitor_interface.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Mode_impl_thermostat_monitor_temperature_manage_monitor_mode.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Heat_Source_impl_thermostat_regulate_temperature_manage_heat_source.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Interface_impl_thermostat_regulate_temperature_manage_regulator_interface.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Mode_impl_thermostat_regulate_temperature_manage_regulator_mode.scala
+sireum proyek logika --smt2-seq --sat --stats isolette/hamr/slang isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Alarm_impl_thermostat_monitor_temperature_manage_alarm.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Interface_impl_thermostat_monitor_temperature_manage_monitor_interface.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Mode_impl_thermostat_monitor_temperature_manage_monitor_mode.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Heat_Source_impl_thermostat_regulate_temperature_manage_heat_source.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Interface_impl_thermostat_regulate_temperature_manage_regulator_interface.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Mode_impl_thermostat_regulate_temperature_manage_regulator_mode.scala
 ```
 
 **+P-B-S**
+```
+sireum proyek logika --par --smt2-seq --sat --stats isolette/hamr/slang isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Alarm_impl_thermostat_monitor_temperature_manage_alarm.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Interface_impl_thermostat_monitor_temperature_manage_monitor_interface.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Mode_impl_thermostat_monitor_temperature_manage_monitor_mode.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Heat_Source_impl_thermostat_regulate_temperature_manage_heat_source.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Interface_impl_thermostat_regulate_temperature_manage_regulator_interface.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Mode_impl_thermostat_regulate_temperature_manage_regulator_mode.scala
+```
+
+**+P-B+S**
 ```
 sireum proyek logika --par --sat --stats isolette/hamr/slang isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Alarm_impl_thermostat_monitor_temperature_manage_alarm.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Interface_impl_thermostat_monitor_temperature_manage_monitor_interface.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Mode_impl_thermostat_monitor_temperature_manage_monitor_mode.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Heat_Source_impl_thermostat_regulate_temperature_manage_heat_source.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Interface_impl_thermostat_regulate_temperature_manage_regulator_interface.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Mode_impl_thermostat_regulate_temperature_manage_regulator_mode.scala
 ```
 
 **+P+B-S**
 ```
-sireum proyek logika --par --par-branch --sat --stats isolette/hamr/slang isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Alarm_impl_thermostat_monitor_temperature_manage_alarm.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Interface_impl_thermostat_monitor_temperature_manage_monitor_interface.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Mode_impl_thermostat_monitor_temperature_manage_monitor_mode.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Heat_Source_impl_thermostat_regulate_temperature_manage_heat_source.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Interface_impl_thermostat_regulate_temperature_manage_regulator_interface.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Mode_impl_thermostat_regulate_temperature_manage_regulator_mode.scala
+sireum proyek logika --par --par-branch --smt2-seq --sat --stats isolette/hamr/slang isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Alarm_impl_thermostat_monitor_temperature_manage_alarm.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Interface_impl_thermostat_monitor_temperature_manage_monitor_interface.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Mode_impl_thermostat_monitor_temperature_manage_monitor_mode.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Heat_Source_impl_thermostat_regulate_temperature_manage_heat_source.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Interface_impl_thermostat_regulate_temperature_manage_regulator_interface.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Mode_impl_thermostat_regulate_temperature_manage_regulator_mode.scala
 ```
 
 **+P+B+S**
 ```
-sireum proyek logika --par --par-branch --smt2-seq --sat --stats isolette/hamr/slang isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Alarm_impl_thermostat_monitor_temperature_manage_alarm.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Interface_impl_thermostat_monitor_temperature_manage_monitor_interface.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Mode_impl_thermostat_monitor_temperature_manage_monitor_mode.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Heat_Source_impl_thermostat_regulate_temperature_manage_heat_source.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Interface_impl_thermostat_regulate_temperature_manage_regulator_interface.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Mode_impl_thermostat_regulate_temperature_manage_regulator_mode.scala
+sireum proyek logika --par --par-branch --sat --stats isolette/hamr/slang isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Alarm_impl_thermostat_monitor_temperature_manage_alarm.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Interface_impl_thermostat_monitor_temperature_manage_monitor_interface.scala isolette/hamr/slang/src/main/component/isolette/Monitor/Manage_Monitor_Mode_impl_thermostat_monitor_temperature_manage_monitor_mode.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Heat_Source_impl_thermostat_regulate_temperature_manage_heat_source.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Interface_impl_thermostat_regulate_temperature_manage_regulator_interface.scala isolette/hamr/slang/src/main/component/isolette/Regulate/Manage_Regulator_Mode_impl_thermostat_regulate_temperature_manage_regulator_mode.scala
 ```
 
 **Sources**
@@ -195,22 +221,27 @@ sireum proyek logika --par --par-branch --smt2-seq --sat --stats isolette/hamr/s
 
 **-P-B-S**
 ```
-sireum proyek logika --sat --stats hardens/hamr/slang hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_saturationActuatorUnit_saturationActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_tempPressureActuatorUnit_tempPressureActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit1_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit2_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_saturationActuatorUnit_actuateSaturationActuator_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_tempPressureActuatorUnit_actuateTempPressureActuator_orLogic.scala
+sireum proyek logika --smt2-seq --sat --stats hardens/hamr/slang hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_saturationActuatorUnit_saturationActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_tempPressureActuatorUnit_tempPressureActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit1_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit2_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_saturationActuatorUnit_actuateSaturationActuator_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_tempPressureActuatorUnit_actuateTempPressureActuator_orLogic.scala
 ```
 
 **+P-B-S**
+```
+sireum proyek logika --par --smt2-seq --sat --stats hardens/hamr/slang hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_saturationActuatorUnit_saturationActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_tempPressureActuatorUnit_tempPressureActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit1_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit2_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_saturationActuatorUnit_actuateSaturationActuator_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_tempPressureActuatorUnit_actuateTempPressureActuator_orLogic.scala
+```
+
+**+P-B+S**
 ```
 sireum proyek logika --par --sat --stats hardens/hamr/slang hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_saturationActuatorUnit_saturationActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_tempPressureActuatorUnit_tempPressureActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit1_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit2_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_saturationActuatorUnit_actuateSaturationActuator_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_tempPressureActuatorUnit_actuateTempPressureActuator_orLogic.scala
 ```
 
 **+P+B-S**
 ```
-sireum proyek logika --par --par-branch --sat --stats hardens/hamr/slang hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_saturationActuatorUnit_saturationActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_tempPressureActuatorUnit_tempPressureActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit1_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit2_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_saturationActuatorUnit_actuateSaturationActuator_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_tempPressureActuatorUnit_actuateTempPressureActuator_orLogic.scala
+sireum proyek logika --par --par-branch --smt2-seq --sat --stats hardens/hamr/slang hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_saturationActuatorUnit_saturationActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_tempPressureActuatorUnit_tempPressureActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit1_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit2_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_saturationActuatorUnit_actuateSaturationActuator_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_tempPressureActuatorUnit_actuateTempPressureActuator_orLogic.scala
 ```
 
 **+P+B+S**
 ```
-sireum proyek logika --par --par-branch --smt2-seq --sat --stats hardens/hamr/slang hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_saturationActuatorUnit_saturationActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_tempPressureActuatorUnit_tempPressureActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit1_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit2_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_saturationActuatorUnit_actuateSaturationActuator_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_tempPressureActuatorUnit_actuateTempPressureActuator_orLogic.scala
+sireum proyek logika --par --par-branch --sat --stats hardens/hamr/slang hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_saturationActuatorUnit_saturationActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/Actuator_i_actuationSubsystem_tempPressureActuatorUnit_tempPressureActuator_actuator.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit1_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_pressureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_saturationLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/CoincidenceLogic_i_actuationSubsystem_actuationUnit2_temperatureLogic_coincidenceLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit1_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_actuationUnit2_tempPressureTripOut_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_saturationActuatorUnit_actuateSaturationActuator_orLogic.scala hardens/hamr/slang/src/main/component/RTS/Actuation/OrLogic_i_actuationSubsystem_tempPressureActuatorUnit_actuateTempPressureActuator_orLogic.scala
 ```
 
 **Sources**
@@ -234,22 +265,27 @@ sireum proyek logika --par --par-branch --smt2-seq --sat --stats hardens/hamr/sl
 ### LMAADLQ
 **-P-B-S**
 ```
-sireum logika verifier --sat --stats LmAadlQ/LMAadlQ.sc
+sireum logika verifier --smt2-seq --sat --stats LmAadlQ/LMAadlQ.sc
 ```
 
 **+P-B-S**
+```
+sireum logika verifier --par --smt2-seq --sat --stats LmAadlQ/LMAadlQ.sc
+```
+
+**+P-B+S**
 ```
 sireum logika verifier --par --sat --stats LmAadlQ/LMAadlQ.sc
 ```
 
 **+P+B-S**
 ```
-sireum logika verifier --par --par-branch --sat --stats LmAadlQ/LMAadlQ.sc
+sireum logika verifier --par --par-branch --smt2-seq --sat --stats LmAadlQ/LMAadlQ.sc
 ```
 
 **+P+B+S**
 ```
-sireum logika verifier --par --par-branch --smt2-seq --sat --stats LmAadlQ/LMAadlQ.sc
+sireum logika verifier --par --par-branch --sat --stats LmAadlQ/LMAadlQ.sc
 ```
 
 **Sources**

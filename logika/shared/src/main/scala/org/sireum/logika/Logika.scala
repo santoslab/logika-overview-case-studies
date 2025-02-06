@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -46,7 +46,7 @@ object Logika {
 
   type Bindings = Map[String, (State.Value.Sym, AST.Typed, Position)]
 
-  type LeafClaims = ISZ[(State.Claim, ISZ[(State.Status.Type, ISZ[State.Claim])])]
+  type LeafClaims = ISZ[(State.Claim.And, ISZ[(State.Status.Type, ISZ[State.Claim])])]
 
   type Assignment = ISZ[B]
 
@@ -66,9 +66,9 @@ object Logika {
   @msig trait Cache {
     def clearTransition(): Unit
 
-    def getTransitionAndUpdateSmt2(th: TypeHierarchy, config: Config, transition: Cache.Transition, context: ISZ[String], state: State, smt2: Smt2): Option[(ISZ[State], U64)]
+    def getTransitionAndUpdateSmt2(th: TypeHierarchy, config: Config, transition: Cache.Transition, context: ISZ[String], state: State, smt2: Smt2): Option[(ISZ[State], U64, HashSet[String])]
 
-    def setTransition(th: TypeHierarchy, config: Config, transition: Cache.Transition, context: ISZ[String], state: State, nextStates: ISZ[State], smt2: Smt2): U64
+    def setTransition(th: TypeHierarchy, config: Config, transition: Cache.Transition, context: ISZ[String], state: State, nextStates: ISZ[State], smt2: Smt2, modifiables: HashSet[String]): U64
 
     def getAssignExpTransitionAndUpdateSmt2(th: TypeHierarchy, config: Config, exp: AST.AssignExp, context: ISZ[String], state: State, smt2: Smt2): Option[(ISZ[(State, State.Value)], U64)]
 
@@ -204,7 +204,7 @@ object Logika {
       val (fileUriOpt, m) = p
       m.get(OptionsUtil.logika) match {
         case Some(options) =>
-          OptionsUtil.toConfig(defaultConfig, maxCores, "file", nameExePathMap, options) match {
+          OptionsUtil.toConfig(defaultConfig, maxCores, "file", nameExePathMap, options(0)) match {
             case Either.Left(c) => sourceConfigMap = sourceConfigMap + fileUriOpt ~> c
             case Either.Right(msgs) =>
               for (msg <- msgs) {
@@ -401,11 +401,16 @@ object Logika {
 
     val tasks = findTasks()
 
-    val smt2 = smt2f(th)
+    checkTasks(tasks, par, nameExePathMap, maxCores, fileOptions, smt2f, cache, reporter, verifyingStartTime)
+  }
 
+  def checkTasks(tasks: ISZ[Task], par: Z,
+                 nameExePathMap: HashMap[String, String], maxCores: Z, fileOptions: LibUtil.FileOptionMap,
+                 smt2f: lang.tipe.TypeHierarchy => Smt2, cache: Logika.Cache,
+                 reporter: Reporter, verifyingStartTime: Z): Unit = {
     def compute(task: Task): B = {
       val r = reporter.empty
-      val csmt2 = smt2
+      val csmt2 = smt2f(task.th)
       task.compute(nameExePathMap, maxCores, fileOptions, csmt2, cache, r)
       reporter.combine(r)
       return T
@@ -417,38 +422,38 @@ object Logika {
     if (verifyingStartTime != 0) {
       reporter.timing(verifyingDesc, extension.Time.currentMillis - verifyingStartTime)
     }
+
   }
 
   def checkScript(fileUriOpt: Option[String], input: String, config: Config, nameExePathMap: HashMap[String, String],
                   maxCores: Z, smt2f: lang.tipe.TypeHierarchy => Smt2, cache: Logika.Cache, reporter: Reporter,
                   hasLogika: B, plugins: ISZ[Plugin], line: Z,
-                  skipMethods: ISZ[String], skipTypes: ISZ[String]): Unit = {
+                  skipMethods: ISZ[String], skipTypes: ISZ[String]): Option[AST.TopUnit] = {
     val parsingStartTime = extension.Time.currentMillis
     val isWorksheet: B = fileUriOpt match {
       case Some(p) => !ops.StringOps(p).endsWith(".scala") && !ops.StringOps(p).endsWith(".slang")
       case _ => T
     }
 
-    def checkScriptH(): Unit = {
+    def checkScriptH(): Option[AST.TopUnit] = {
       val topUnitOpt = lang.parser.Parser(input).parseTopUnit[AST.TopUnit](
         isWorksheet = isWorksheet, isDiet = F, fileUriOpt = fileUriOpt, reporter = reporter)
       val libraryStartTime = extension.Time.currentMillis
       reporter.timing(parsingDesc, libraryStartTime - parsingStartTime)
       if (reporter.hasError) {
         reporter.illFormed()
-        return
+        return topUnitOpt
       }
       topUnitOpt match {
         case Some(program: AST.TopUnit.Program) =>
           if (!isWorksheet) {
-            return
+            return topUnitOpt
           }
-          val (tc, rep) = extension.Cancel.cancellable(() =>
-            lang.FrontEnd.checkedLibraryReporter)
+          val (tc, rep) = extension.Cancel.cancellable(() => lang.FrontEnd.checkedLibraryReporter)
           val typeCheckingStartTime = extension.Time.currentMillis
           reporter.timing(libraryDesc, typeCheckingStartTime - libraryStartTime)
           reporter.reports(rep.messages)
-          val (th, p) = extension.Cancel.cancellable(() =>
+          val (th2, p) = extension.Cancel.cancellable(() =>
             lang.FrontEnd.checkWorksheet(config.parCores, Some(tc.typeHierarchy), program, reporter))
           if (!reporter.hasError) {
             lang.tipe.PostTipeAttrChecker.checkProgram(p, reporter)
@@ -459,13 +464,13 @@ object Logika {
           if (!reporter.hasError) {
             if (hasLogika) {
               if (config.transitionCache || config.smt2Caching) {
-                val dummy: U64 = if (config.interp) th.fingerprintKeepMethodBody else th.fingerprintNoMethodBody // init fingerprint
+                val dummy: U64 = if (config.interp) th2.fingerprintKeepMethodBody else th2.fingerprintNoMethodBody // init fingerprint
                 val dummy2 = config.fingerprint
               }
 
               var fileOptions: LibUtil.FileOptionMap = HashMap.empty
               fileOptions = fileOptions + fileUriOpt ~> LibUtil.mineOptions(input)
-              checkStmts(nameExePathMap, maxCores, fileOptions, p.body.stmts, ISZ(), config, th, smt2f, cache, reporter,
+              checkStmts(nameExePathMap, maxCores, fileOptions, p.body.stmts, ISZ(), config, th2, smt2f, cache, reporter,
                 config.parCores, plugins, verifyingStartTime, T, line, skipMethods, skipTypes)
               if (reporter.hasError) {
                 reporter.illFormed()
@@ -481,9 +486,10 @@ object Logika {
           }
         case _ =>
       }
+      return topUnitOpt
     }
 
-    extension.Cancel.cancellable(checkScriptH _)
+    return extension.Cancel.cancellable(checkScriptH _)
   }
 
   @pure def shouldCheck(fileSet: HashSSet[String], line: Z, posOpt: Option[Position]): B = {
@@ -1830,6 +1836,11 @@ import Util._
 
     def evalSelect(exp: AST.Exp.Select): ISZ[(State, State.Value)] = {
       val pos = exp.id.attr.posOpt.get
+      exp.attr.resOpt.get match {
+        case res: AST.ResolvedInfo.Method if res.tpeOpt.isEmpty =>
+          println("Here")
+        case _ =>
+      }
       exp.attr.resOpt.get match {
         case res: AST.ResolvedInfo.BuiltIn if res.kind == AST.ResolvedInfo.BuiltIn.Kind.IsInstanceOf ||
           res.kind == AST.ResolvedInfo.BuiltIn.Kind.AsInstanceOf =>
@@ -4321,7 +4332,7 @@ import Util._
 
   def evalBranch(isMatch: B, split: Split.Type, smt2: Smt2, cache: Logika.Cache, rtCheck: B, s0: State,
                  lcontext: ISZ[String], branches: ISZ[Branch], i: Z, rOpt: Option[State.Value.Sym],
-                 reporter: Reporter): (Z, Option[(State.Claim, ISZ[(State.Status.Type, ISZ[State.Claim])])]) = {
+                 reporter: Reporter): (Z, Option[(State.Claim.And, ISZ[(State.Status.Type, ISZ[State.Claim])])]) = {
     val shouldSplit: B = split match {
       case Split.Default => config.splitAll || (isMatch && config.splitMatch)
       case Split.Enabled => T
@@ -4334,7 +4345,7 @@ import Util._
         State.Claim.Prop(T, sym))
     val pos = sym.pos
     val posOpt: Option[Position] = Some(pos)
-    val s1 = s0.addClaim(cond)
+    val s1 = s0.addClaims(cond.claims)
     if (s1.ok) {
       if (smt2.sat(context.methodName, config, cache, T,
         s"$title at [${pos.beginLine}, ${pos.beginColumn}]", pos, s1.claims, reporter)) {
@@ -4373,7 +4384,7 @@ import Util._
       (allReturns && config.branchPar == Config.BranchPar.OnlyAllReturns))) {
       val inputs: ISZ[Z] = branches.indices
 
-      def computeBranch(i: Z): (Option[(State.Claim, ISZ[(State.Status.Type, ISZ[State.Claim])])], Z, Smt2) = {
+      def computeBranch(i: Z): (Option[(State.Claim.And, ISZ[(State.Status.Type, ISZ[State.Claim])])], Z, Smt2) = {
         val rep = reporter.empty
         val lsmt2 = smt2
         val (nextFresh, lcsOpt) = evalBranch(isMatch, split, lsmt2, cache, rtCheck, s0, lcontext, branches, i, rOpt, rep)
@@ -4381,7 +4392,30 @@ import Util._
         return (lcsOpt, nextFresh, lsmt2)
       }
 
-      if (!(branches.size == 2 && (branches(1).body.stmts.isEmpty || branches(0).body.stmts.isEmpty))) {
+      @pure def shouldPar: B = {
+        if (branches.size == 1) {
+          return F
+        }
+        if (branches.size >= config.branchParPredNum) {
+          return T
+        }
+
+        var compNum: Z = 0
+        for (b <- branches) {
+          val stmts = b.body.stmts
+          for (stmt <- stmts) {
+            compNum = compNum + stmt.compNum
+          }
+        }
+
+        if (compNum < config.branchParPredComp) {
+          return F
+        }
+
+        return T
+      }
+
+      if (shouldPar) {
         var first: Z = -1
         val outputs = ops.MSZOps(inputs.toMS).mParMapCores(computeBranch _, config.parCores)
         for (i <- 0 until outputs.size) {
@@ -4404,7 +4438,7 @@ import Util._
               assert(gap >= 0)
               if ((!allReturns || config.interp || context.hasInline) && gap > 0) {
                 val rw = Util.SymAddRewriter(s0.nextFresh, nextFreshGap, jescmPlugins._4)
-                val newCond = rw.transformStateClaim(cond).getOrElseEager(cond)
+                val newCond = rw.transformStateClaim(cond).getOrElseEager(cond).asInstanceOf[State.Claim.And]
                 var newClaimss = ISZ[(State.Status.Type, ISZ[State.Claim])]()
                 for (statusClaims <- claimss) {
                   newClaimss = newClaimss :+ ((statusClaims._1, for (claim <- statusClaims._2) yield
@@ -4453,7 +4487,7 @@ import Util._
             newScss = newScss :+ (scs :+ ((cond, claims)))
           } else {
             r = r :+ s0(status = status, claims = (ops.ISZOps(claims).slice(0, s0.claims.size) :+ cond) ++
-              ops.ISZOps(claims).slice(s0.claims.size + 1, claims.size))
+              ops.ISZOps(claims).slice(s0.claims.size + cond.claims.size, claims.size))
           }
         }
       }
@@ -4783,12 +4817,22 @@ import Util._
     }
     val stepNo = step.id
     var (s0, m) = stateMap
+    def extractSpcs(start: Z, steps: ISZ[AST.ProofAst.Step]): ISZ[StepProofContext] = {
+      var r = ISZ[StepProofContext]()
+      for (i <- start until steps.size) {
+        m.get(steps(i).id) match {
+          case Some(spc) => r = r :+ spc
+          case _ =>
+        }
+      }
+      return r
+    }
     step match {
       case step: AST.ProofAst.Step.Regular =>
         val pos = step.claim.posOpt.get
         if (config.transitionCache) {
           cache.getTransitionAndUpdateSmt2(th, config, Cache.Transition.ProofStep(step, m.values), context.methodName, s0, smt2) match {
-            case Some((ISZ(nextState), cached)) =>
+            case Some((ISZ(nextState), cached, _)) =>
               reporter.coverage(F, cached, pos)
               return (nextState, m + stepNo ~> StepProofContext.Regular(th, stepNo, step.claim))
             case _ =>
@@ -4841,7 +4885,7 @@ import Util._
           }
           val nextState = plugin.handle(this, smt2, cache, m, s0, normStep, reporter)
           if (config.transitionCache && nextState.ok && !reporter.hasError) {
-            val cached = cache.setTransition(th, config, Cache.Transition.ProofStep(step, m.values), context.methodName, s0, ISZ(nextState), smt2)
+            val cached = cache.setTransition(th, config, Cache.Transition.ProofStep(step, m.values), context.methodName, s0, ISZ(nextState), smt2, HashSet.empty)
             reporter.coverage(T, cached, pos)
           } else {
             reporter.coverage(F, zeroU64, pos)
@@ -4861,8 +4905,11 @@ import Util._
         }
         s0 = stateMap._1(status = s0.status, nextFresh = s0.nextFresh)
         if (s0.ok) {
-          m = stateMap._2 + stepNo ~> StepProofContext.SubProof(stepNo,
-            th.normalizeExp(step.steps(0).asInstanceOf[AST.ProofAst.Step.Assume].claim), extractClaims(step.steps))
+          if (step.steps.size > 0) {
+            m = stateMap._2 + stepNo ~> StepProofContext.SubProof(stepNo,
+              step.steps(0).asInstanceOf[AST.ProofAst.Step.Assume].claim, extractClaims(step.steps),
+              extractSpcs(1, step.steps))
+          }
           return (s0, m)
         } else {
           return (s0, stateMap._2)
@@ -4888,7 +4935,7 @@ import Util._
           return (s0(status = State.Status.Error), stateMap._2)
         }
         val s1 = evalRegularStepClaimRtCheck(smt2, cache, F, s0, step.claim, step.id.posOpt, reporter)
-        return (s1, m + stepNo ~> StepProofContext.Regular(th, stepNo, step.claim))
+        return (s1, stateMap._2 + stepNo ~> StepProofContext.Regular(th, stepNo, step.claim))
       case step: AST.ProofAst.Step.Let =>
         for (sub <- step.steps if s0.ok) {
           val p = evalProofStep(smt2, cache, (s0, m), sub, reporter)
@@ -4899,12 +4946,13 @@ import Util._
         if (s0.ok) {
           if (step.steps.nonEmpty && step.steps(0).isInstanceOf[AST.ProofAst.Step.Assume]) {
             return (s0,
-              stateMap._2 + stepNo ~> StepProofContext.FreshAssumeSubProof(stepNo, step.params,
-                th.normalizeExp(step.steps(0).asInstanceOf[AST.ProofAst.Step.Assume].claim),
-                extractClaims(step.steps)))
+              stateMap._2 + stepNo ~> StepProofContext.FreshAssumeSubProof(stepNo, step.context, step.params,
+                step.steps(0).asInstanceOf[AST.ProofAst.Step.Assume].claim,
+                extractClaims(step.steps), extractSpcs(1, step.steps)))
           } else {
             return (s0,
-              stateMap._2 + stepNo ~> StepProofContext.FreshSubProof(stepNo, step.params, extractClaims(step.steps)))
+              stateMap._2 + stepNo ~> StepProofContext.FreshSubProof(stepNo, step.context, step.params,
+                extractClaims(step.steps), extractSpcs(0, step.steps)))
           }
         } else {
           return (s0, stateMap._2)
@@ -5317,7 +5365,7 @@ import Util._
           var cacheHit = F
           if (config.transitionCache) {
             cache.getTransitionAndUpdateSmt2(th, config, Cache.Transition.Sequent(sequent), context.methodName, st0, smt2) match {
-              case Some((ISZ(nextState), cached)) =>
+              case Some((ISZ(nextState), cached, _)) =>
                 cacheHit = T
                 reporter.coverage(F, cached, pos)
                 st0 = nextState
@@ -5336,7 +5384,7 @@ import Util._
                 ISZ(), reporter)._1
             }
             if (config.transitionCache && st0.ok) {
-              val cached = cache.setTransition(th, config, Cache.Transition.Sequent(sequent), context.methodName, st00, ISZ(st0), smt2)
+              val cached = cache.setTransition(th, config, Cache.Transition.Sequent(sequent), context.methodName, st00, ISZ(st0), smt2, HashSet.empty)
               reporter.coverage(T, cached, pos)
             } else {
               reporter.coverage(F, zeroU64, pos)
@@ -5583,7 +5631,7 @@ import Util._
                 s0: State, exps: ISZ[AST.Exp], reporter: Reporter): ISZ[State] = {
     if (config.transitionCache && s0.ok) {
       cache.getTransitionAndUpdateSmt2(th, config, Logika.Cache.Transition.Exps(exps), context.methodName, s0, smt2) match {
-        case Some((nextStates, cached)) =>
+        case Some((nextStates, cached, _)) =>
           for (exp <- exps) {
             reporter.coverage(F, cached, exp.posOpt.get)
           }
@@ -5606,7 +5654,7 @@ import Util._
     }
     val r = currents ++ done
     if (config.transitionCache && !reporter.hasError) {
-      val cached = cache.setTransition(th, config, Logika.Cache.Transition.Exps(exps), context.methodName, s0, r, smt2)
+      val cached = cache.setTransition(th, config, Logika.Cache.Transition.Exps(exps), context.methodName, s0, r, smt2, HashSet.empty)
       for (exp <- exps) {
         reporter.coverage(T, cached, exp.posOpt.get)
       }

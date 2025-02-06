@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -99,7 +99,9 @@ object LogikaTest {
       rwTrace = T,
       rwMax = 100,
       rwPar = T,
-      rwEvalTrace = T
+      rwEvalTrace = T,
+      branchParPredNum = 2,
+      branchParPredComp = 10
     )
 
   lazy val isInGithubAction: B = Os.env("GITHUB_ACTION").nonEmpty

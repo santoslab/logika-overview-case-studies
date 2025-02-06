@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -47,9 +47,15 @@ object cli {
     usage = "<option>* <slang-file>+",
     usageDescOpt = None(),
     opts = ISZ(
+      Opt(name = "feedback", longKey = "feedback", shortKey = None(),
+        tpe = Type.Path(multiple = F, default = None()),
+        description = "Feedback output directory"),
       modeOpt,
       Opt(name = "noRuntime", longKey = "no-runtime", shortKey = Some('r'),
         tpe = Type.Flag(F), description = "Do not use built-in runtime (use runtime in sourcepath)"),
+      Opt(name = "parseableMessages", longKey = "parseable-messages", shortKey = None(),
+        tpe = Type.Flag(F),
+        description = "Print parseable file messages"),
       Opt(name = "sourcepath", longKey = "sourcepath", shortKey = Some('s'),
         tpe = Type.Path(T, None()),
         description = "Sourcepath of Slang .scala files")
@@ -142,6 +148,12 @@ object cli {
         Opt(name = "branchParReturn", longKey = "par-branch-return", shortKey = None(),
           tpe = Type.Flag(F),
           description = "Only use branch parallelization if all branches return"),
+        Opt(name = "branchPredNum", longKey = "par-branch-pred-num", shortKey = None(),
+          tpe = Type.Num(sep = None(), default = 2, min = Some(2), max = None()),
+          description = "Branch parallelization prediction minimum number of branches"),
+        Opt(name = "branchPredComplexity", longKey = "par-branch-pred-complexity", shortKey = None(),
+          tpe = Type.Num(sep = None(), default = 10, min = Some(0), max = None()),
+          description = "Branch parallelization prediction statement complexity"),
         Opt(name = "rwPar", longKey = "par-rw", shortKey = None(),
           tpe = Type.Flag(T),
           description = "Enable rewriting parallelization")
@@ -216,12 +228,28 @@ object cli {
     )
   )
 
+  val logikaConfig: Tool = Tool(
+    name = "logikaConfig",
+    command = "config",
+    description = "Logika Config",
+    header = "Sireum Logika Config",
+    usage = "<option>* <file.sc>",
+    usageDescOpt = None(),
+    opts = ISZ(
+      Opt(name = "theme", longKey = "theme", shortKey = Some('t'),
+        tpe = Type.Choice(name = "Theme", sep = None(), elements = ISZ("dark", "light")),
+        description = "Form color theme")
+    ),
+    groups = ISZ()
+  )
+
+
   val group: Group = Group(
     name = "logika",
     description = "Logika tools",
     header = "Logika Tools for Slang",
     unlisted = F,
-    subs = ISZ(logikaVerifier)
+    subs = ISZ(logikaConfig, logikaVerifier)
   )
 
 }

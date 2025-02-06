@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -64,6 +64,10 @@ object Os {
 
   @pure def isLinux: B = {
     return kind == Kind.Linux
+  }
+
+  @pure def isLinuxArm: B = {
+    return kind == Kind.LinuxArm
   }
 
   @pure def isMac: B = {
@@ -142,8 +146,30 @@ object Os {
     return Path.Impl(Ext.norm(value))
   }
 
+  def printParseableMessages(reporter: message.Reporter): Unit = {
+    for (m <- reporter.messages) {
+      val severity: String = m.level match {
+        case message.Level.Info => "info"
+        case message.Level.Warning => "warning"
+        case _ => "error"
+      }
+      var text = m.text
+      val i = ops.StringOps(text).indexOf('\n')
+      if (i >= 0) {
+        text = ops.StringOps(text).substring(0, i)
+      }
+      text = ops.StringOps(text).trim
+      m.posOpt match {
+        case Some(pos) if pos.uriOpt.nonEmpty =>
+          println(s"${Os.Path.fromUri(pos.uriOpt.get)}:${pos.beginLine}:${pos.beginColumn}:${pos.endLine}:${pos.endColumn + 1}: $severity: $text")
+        case _ =>
+          println(s"$severity: $text")
+      }
+    }
+  }
+
   @pure def proc(commands: ISZ[String]): Proc = {
-    return Proc(commands, cwd, Map.empty, T, None(), F, F, F, F, F, 0, F, F, None(), None())
+    return Proc(commands, cwd, ISZ(), T, None(), F, F, F, F, F, 0, F, F, None(), None())
   }
 
   @pure def procs(commands: String): Proc = {
@@ -191,7 +217,7 @@ object Os {
 
   def sireumHomeOpt: Option[Os.Path] = {
     Os.env("SIREUM_HOME") match {
-      case Some(d) => return Some(Os.path(d).canon)
+      case Some(d) if d.size > 0 => return Some(Os.path(d).canon)
       case _ => Os.prop("org.sireum.home") match {
         case Some(d) => return Some(Os.path(d).canon)
         case _ => return Ext.detectSireumHome
@@ -275,6 +301,10 @@ object Os {
       }
     }
 
+    def fromUri(uri: String): Os.Path = {
+      return Os.path(Os.Ext.fromUri(uri))
+    }
+
     def overlay(isMove: B, path: Os.Path, target: Os.Path, includeDir: B, followLink: B,
                 pred: Os.Path => B @pure, report: B): HashSMap[Os.Path, Os.Path] = {
       var r = HashSMap.empty[Os.Path, Os.Path]
@@ -352,6 +382,16 @@ object Os {
 
   object Proc {
 
+    @sig trait LineFilter {
+      def filter(line: String): B
+    }
+
+    @datatype class FunLineFilter(val f: String => B @pure) extends LineFilter {
+      def filter(line: String): B = {
+        return f(line)
+      }
+    }
+
     @sig sealed trait Result extends OsProto.Proc.Result
 
     object Result {
@@ -378,7 +418,7 @@ object Os {
 
   @datatype class Proc(val cmds: ISZ[String],
                        val wd: Path,
-                       val envMap: Map[String, String],
+                       val envMap: ISZ[(String, String)],
                        val shouldAddEnv: B,
                        val in: Option[String],
                        val isErrAsOut: B,
@@ -389,8 +429,8 @@ object Os {
                        val timeoutInMillis: Z,
                        val shouldUseStandardLib: B,
                        val isScript: B,
-                       val outLineActionOpt: Option[String => B],
-                       val errLineActionOpt: Option[String => B]) extends OsProto.Proc {
+                       val outLineActionOpt: Option[Proc.LineFilter],
+                       val errLineActionOpt: Option[Proc.LineFilter]) extends OsProto.Proc {
 
     @pure def commands(cs: ISZ[String]): Proc = {
       val thisL = this
@@ -404,7 +444,7 @@ object Os {
 
     @pure def env(m: ISZ[(String, String)]): Proc = {
       val thisL = this
-      return thisL(envMap = this.envMap ++ m)
+      return thisL(envMap = (Map.empty[String, String] ++ this.envMap ++ m).entries)
     }
 
     @pure def input(content: String): Proc = {
@@ -457,14 +497,14 @@ object Os {
       return thisL(isScript = T)
     }
 
-    @pure def outLineAction(f: String => B): Proc = {
+    @pure def outLineAction(f: String => B @pure): Proc = {
       val thisL = this
-      return thisL(outLineActionOpt = Some(f))
+      return thisL(outLineActionOpt = Some(Proc.FunLineFilter(f)))
     }
 
-    @pure def errLineAction(f: String => B): Proc = {
+    @pure def errLineAction(f: String => B @pure): Proc = {
       val thisL = this
-      return thisL(errLineActionOpt = Some(f))
+      return thisL(errLineActionOpt = Some(Proc.FunLineFilter(f)))
     }
 
     def run(): Proc.Result = {
@@ -572,6 +612,18 @@ object Os {
 
     def isSymLink: B = {
       return Ext.isSymLink(value)
+    }
+
+    def isExecutable: B = {
+      return Ext.isExecutable(value)
+    }
+
+    def isReadable: B = {
+      return Ext.isReadable(value)
+    }
+
+    def isWritable: B = {
+      return Ext.isWritable(value)
     }
 
     def kind: Path.Kind.Type = {
@@ -719,6 +771,26 @@ object Os {
       return Ext.sha1(value)
     }
 
+    def sha3(numOfBytes: Z): String = {
+      return Ext.sha3(value, numOfBytes)
+    }
+
+    def setLastModified(millis: Z): Unit = {
+      Ext.setLastModified(value, millis)
+    }
+
+    def setExecutable(executable: B): Unit = {
+      Ext.setExecutable(value, executable)
+    }
+
+    def setReadable(readable: B): Unit = {
+      Ext.setReadable(value, readable)
+    }
+
+    def setWritable(writable: B): Unit = {
+      Ext.setWritable(value, writable)
+    }
+
     def size: Z = {
       return Ext.size(value)
     }
@@ -730,6 +802,19 @@ object Os {
       } else {
         nativ.removeAll()
         proc(string +: args).script.console.runCheck()
+      }
+    }
+
+    def touch(): Unit = {
+      if (exists) {
+        if (isFile) {
+          writeOver(read)
+        } else {
+          setLastModified(extension.Time.currentMillis)
+        }
+      } else {
+        up.mkdirAll()
+        writeOver("")
       }
     }
 
@@ -934,6 +1019,12 @@ object Os {
 
     def isSymLink(path: String): B = $
 
+    def isExecutable(path: String): B = $
+
+    def isReadable(path: String): B = $
+
+    def isWritable(path: String): B = $
+
     def kind(path: String): Path.Kind.Type = $
 
     def lastModified(path: String): Z = $
@@ -999,6 +1090,16 @@ object Os {
     def removeOnExit(path: String): Unit = $
 
     def sha1(path: String): String = $
+
+    def sha3(path: String, numOfBytes: Z): String = $
+
+    def setLastModified(path: String, millis: Z): Unit = $
+
+    def setExecutable(path: String, value: B): B = $
+
+    def setReadable(path: String, value: B): B = $
+
+    def setWritable(path: String, value: B): B = $
 
     @pure def slashDir: String = $
 

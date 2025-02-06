@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -68,9 +68,9 @@ object OsProto {
 
     @pure def script: Proc
 
-    @pure def outLineAction(f: String => B): Proc
+    @pure def outLineAction(f: String => B @pure): Proc
 
-    @pure def errLineAction(f: String => B): Proc
+    @pure def errLineAction(f: String => B @pure): Proc
 
     @pure def shouldPrintCommands: B
 

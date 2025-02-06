@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -52,6 +52,30 @@ import org.sireum._
     } else {
       return c
     }
+  }
+
+  @strictpure def isScalaOp: B = c match {
+    case '!' => T
+    case '#' => T
+    case '%' => T
+    case '&' => T
+    case '*' => T
+    case '+' => T
+    case '-' => T
+    case '/' => T
+    case ':' => T
+    case '<' => T
+    case '=' => T
+    case '>' => T
+    case '?' => T
+    case '@' => T
+    case '\\' => T
+    case '^' => T
+    case '|' => T
+    case '~' => T
+    case _ =>
+      val cat = category
+      cat == COps.Category.Sm || cat == COps.Category.So
   }
 
   @pure def escapeString: String = {

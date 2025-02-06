@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,7 @@ object Smt2Query {
       "Error"
     }
 
-    val empty: Result = Result(Kind.Error, "", "", "", "", 0, F)
+    val empty: Result = Result(Kind.Error, "", "", "", "", 0, 0, F)
   }
 
   @datatype class Result(val kind: Result.Kind.Type,
@@ -48,6 +48,7 @@ object Smt2Query {
                          val info: String,
                          val output: String,
                          val timeMillis: Z,
+                         val totalTimeMillis: Z,
                          val cached: B)
 
 }

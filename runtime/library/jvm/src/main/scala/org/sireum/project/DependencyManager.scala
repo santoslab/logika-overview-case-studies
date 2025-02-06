@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,13 @@ package org.sireum.project
 import org.sireum._
 
 object DependencyManager {
+  @enum object DepKind {
+    "File"
+    "HTTP"
+    "HTTPS"
+    "IVY"
+  }
+
   @datatype class Lib(val name: String,
                       val org: String,
                       val module: String,
@@ -80,11 +87,26 @@ import DependencyManager._
                                 val javaHome: Os.Path,
                                 val scalaHome: Os.Path,
                                 val sireumHome: Os.Path,
-                                val cacheOpt: Option[Os.Path]) {
+                                val cacheOpt: Option[Os.Path],
+                                val proxy: Coursier.Proxy) {
 
   val sireumJar: Os.Path = sireumHome / "bin" / "sireum.jar"
 
   val _scalacPlugin: Os.Path = sireumHome / "lib" / s"scalac-plugin-${versions.get(scalacPluginKey).get}.jar"
+
+  @pure def depKind(dep: String): DepKind.Type = {
+    val depOps = ops.StringOps(dep)
+    if (depOps.startsWith("file://")) {
+      return DepKind.File
+    }
+    if (depOps.startsWith("http://")) {
+      return DepKind.HTTP
+    }
+    if (depOps.startsWith("https://")) {
+      return DepKind.HTTPS
+    }
+    return DepKind.IVY
+  }
 
   def scalacPlugin: Os.Path = {
     if (_scalacPlugin.exists) {
@@ -144,8 +166,12 @@ import DependencyManager._
   val ivyDeps: HashSMap[String, String] = {
     var r = HashSMap.empty[String, String]
     def addIvyDep(ivyDep: String): Unit = {
-      val v = getVersion(ivyDep)
-      r = r + ivyDep ~> s"${toJsDep(ivyDep)}$v"
+      if (depKind(ivyDep) != DepKind.IVY) {
+        r = r + ivyDep ~> ivyDep
+      } else {
+        val v = getVersion(ivyDep)
+        r = r + ivyDep ~> s"${toJsDep(ivyDep)}$v"
+      }
     }
     for (m <- project.modules.values) {
       for (ivyDep <- m.ivyDeps) {
@@ -182,6 +208,10 @@ import DependencyManager._
   def libMap: HashSMap[String, Lib] = {
     if (!_libMapInit) {
       var r = HashSMap.empty[String, Lib]
+      r = r + "org.scala-lang.scalap" ~> Lib(
+        "org.scala-lang.scalap", "org.scala-lang", "scalap", scalaVersion,
+        (sireumHome / "bin" / "scala" / "lib" / s"scalap-$scalaVersion.jar").value, None(), None()
+      )
       for (cif <- fetchClassifiers(ivyDeps.values, buildClassifiers(withSource, withDoc))) {
         val name = libName(cif)
         val p = cif.path
@@ -252,7 +282,8 @@ import DependencyManager._
       case _ =>
     }
     val r: ISZ[Lib] =
-      for (cif <- fetch(computeTransitiveIvyDeps(m)) if !ignoredLibraryNames.contains(libName(cif))) yield libMap.get(libName(cif)).get
+      for (cif <- fetch(computeTransitiveIvyDeps(m)) if !ignoredLibraryNames.contains(libName(cif))) yield
+        libMap.get(libName(cif)).get
     tLibMap = tLibMap + m.id ~> r
     return r
   }
@@ -275,12 +306,55 @@ import DependencyManager._
     return fetchClassifiers(ivyDeps, ISZ(CoursierClassifier.Default))
   }
 
+  def resolveVersion(dep: String): (Option[Os.Path], String) = {
+    depKind(dep) match {
+      case DepKind.IVY => return (None(), getVersion(dep))
+      case DepKind.File =>
+        val p = Os.Path.fromUri(dep)
+        if (p.ext != "jar") {
+          halt(s"File dependency has to be a .jar file: $dep")
+        }
+        return (Some(p), conversions.Z.toU64(p.lastModified).string)
+      case _ =>
+        val cis = conversions.String.toCis(dep)
+        if (!ops.StringOps.endsWith(cis, conversions.String.toCis(".jar"))) {
+          halt(s"URL dependency has to be a .jar file: $dep")
+        }
+        val i = ops.StringOps.lastIndexOfFrom(cis, '/', 0)
+        val name = ops.StringOps.substring(cis, i + 1, dep.size)
+        val p: Os.Path = Os.env("SIREUM_CACHE") match {
+          case Some(c) => Os.path(c) / name
+          case _ => Os.home / "Downloads" / "sireum" / name
+        }
+        p.up.mkdirAll()
+        println(s"Downloading $dep ...")
+        p.removeAll()
+        p.downloadFrom(dep)
+        println()
+        val version = p.sha3(8)
+        val pv = p.up.canon / st"${ops.StringOps(p.name).substring(0, p.name.size - 4)}-$version.jar".render
+        p.moveOverTo(pv)
+        return (Some(pv), version)
+    }
+  }
+
   def fetchClassifiers(ivyDeps: ISZ[String], classifiers: ISZ[CoursierClassifier.Type]): ISZ[CoursierFileInfo] = {
     val key = (ivyDeps, classifiers)
     fetchedDeps.get(key) match {
       case Some(r) => return r
       case _ =>
-        val r = Coursier.fetchClassifiers(scalaVersion, cacheOpt, project.mavenRepoUrls, ivyDeps, classifiers)
+        var coursierIvyDeps = ISZ[String]()
+        var unmanagedDeps = ISZ[CoursierFileInfo]()
+        for (dep <- ivyDeps) {
+          depKind(dep) match {
+            case DepKind.IVY => coursierIvyDeps = coursierIvyDeps :+ dep
+            case _ =>
+              val (Some(p), version) = resolveVersion(dep)
+              unmanagedDeps = unmanagedDeps :+ CoursierFileInfo(st"unmanaged.$version".render, p.name, version, p.string)
+          }
+        }
+        val r = Coursier.fetchClassifiers(scalaVersion, cacheOpt, project.mavenRepoUrls, coursierIvyDeps, classifiers,
+          proxy) ++ unmanagedDeps
         fetchedDeps = fetchedDeps + key ~> r
         return r
     }

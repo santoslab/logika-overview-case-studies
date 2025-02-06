@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -27,6 +27,7 @@
 package org.sireum.logika
 
 import org.sireum._
+import org.sireum.lang.ast.{Attr, ResolvedAttr, TypedAttr}
 import org.sireum.message.Message
 import org.sireum.logika.Logika.Reporter
 import org.sireum.logika.plugin.Plugin
@@ -34,6 +35,7 @@ import org.sireum.lang.{ast => AST}
 import org.sireum.lang.tipe.TypeHierarchy
 
 @datatype trait Task {
+  @strictpure def th: TypeHierarchy
   def compute(nameExePathMap: HashMap[String, String], maxCores: Z, fileOptions: LibUtil.FileOptionMap,
               smt2: Smt2, cache: Logika.Cache, reporter: Reporter): ISZ[Message]
 }
@@ -200,6 +202,65 @@ object Task {
           val lastPos = stmts(stmts.size - 1).posOpt.get
           logika.logPc(state(status = State.Status.End), reporter, Some(lastPos))
         }
+      }
+      return reporter.messages
+    }
+  }
+
+  @record class LineCollector(var set: HashSSet[message.Position]) extends AST.MTransformer {
+    def addPosOpt(posOpt: Option[message.Position]): Unit = {
+      posOpt match {
+        case Some(pos) => set = set + pos
+        case _ =>
+      }
+    }
+
+    override def postAttr(o: Attr): MOption[Attr] = {
+      addPosOpt(o.posOpt)
+      return MNone()
+    }
+
+    override def postTypedAttr(o: TypedAttr): MOption[TypedAttr] = {
+      addPosOpt(o.posOpt)
+      return MNone()
+    }
+
+    override def postResolvedAttr(o: ResolvedAttr): MOption[ResolvedAttr] = {
+      addPosOpt(o.posOpt)
+      return MNone()
+    }
+  }
+
+  @datatype class Claim(val th: TypeHierarchy,
+                        val config: Config,
+                        val title: String,
+                        val exp: AST.Exp,
+                        val plugins: ISZ[Plugin]) extends Task {
+    override def compute(nameExePathMap: HashMap[String, String], maxCores: Z, fileOptions: LibUtil.FileOptionMap,
+                         smt2: Smt2, cache: Logika.Cache, reporter: Reporter): ISZ[Message] = {
+      val logika = Logika(th, config, Context.empty(nameExePathMap, maxCores, fileOptions), plugins)
+      val csmt2 = smt2
+      var svs = ISZ[(State, State.Value)]()
+      var isPlugin = F
+      for (p <- plugins) {
+        p match {
+          case p: plugin.ExpPlugin =>
+            isPlugin = T
+            svs = p.handle(logika, Logika.Split.Default, csmt2, cache, T, State.create, exp, reporter)
+          case _ =>
+        }
+      }
+      if (!isPlugin) {
+        svs = logika.evalExp(Logika.Split.Default, csmt2, cache, T, State.create, exp, reporter)
+      }
+      for (sv <- svs) {
+        val (state, sym) = logika.value2Sym(sv._1, sv._2, exp.posOpt.get)
+        logika.evalAssertH(T, csmt2, cache, title, state, sym, exp.posOpt, ISZ(), reporter)
+      }
+      val lc = LineCollector(HashSSet.empty)
+      lc.transformExp(exp)
+      for (pos <- lc.set.elements) {
+        reporter.coverage(F, conversions.Z.toU64(0), pos)
       }
       return reporter.messages
     }

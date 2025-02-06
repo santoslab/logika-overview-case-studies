@@ -1,6 +1,6 @@
 // #Sireum
 /*
- Copyright (c) 2017-2024, Robby, Kansas State University
+ Copyright (c) 2017-2025, Robby, Kansas State University
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -69,6 +69,18 @@ import org.sireum.logika.Logika.Reporter
         case _ => return F
       }
     }
+    @pure def isUBuiltInOf(exp: AST.Exp, claim: AST.Exp, kind: AST.ResolvedInfo.BuiltIn.Kind.Type): B = {
+      exp match {
+        case exp: AST.Exp.Unary =>
+          exp.attr.resOpt.get match {
+            case res: AST.ResolvedInfo.BuiltIn if res.kind == kind =>
+              return logika.th.normalizeExp(exp.exp) == logika.th.normalizeExp(claim)
+            case _ =>
+          }
+        case _ =>
+      }
+      return F
+    }
     @pure def isUBuiltIn(exp: AST.Exp, kind: AST.ResolvedInfo.BuiltIn.Kind.Type): B = {
       exp match {
         case exp: AST.Exp.Unary =>
@@ -113,7 +125,7 @@ import org.sireum.logika.Logika.Reporter
       }
       val ISZ(subProofNo) = args
       val subProof: HashSet[AST.Exp] = spcMap.get(subProofNo) match {
-        case Some(sp: StepProofContext.SubProof) if sp.assumption == logika.th.normalizeExp(claim.left) => HashSet ++ sp.claims + sp.assumption
+        case Some(sp: StepProofContext.SubProof) if logika.th.normalizeExp(sp.assumption) == logika.th.normalizeExp(claim.left) => HashSet ++ sp.claims + sp.assumption
         case _ =>
           reporter.error(subProofNo.posOpt, Logika.kind, s"Expecting a sub-proof step assuming the antecedent of step ${step.id}'s claim")
           return F
@@ -157,13 +169,13 @@ import org.sireum.logika.Logika.Reporter
             return err
         }
         val leftSubProof: HashSet[AST.Exp] = spcMap.get(leftSubProofNo) match {
-          case Some(sp@StepProofContext.SubProof(_, exp, _)) if exp == logika.th.normalizeExp(orClaim.left) => HashSet ++ sp.claims
+          case Some(sp@StepProofContext.SubProof(_, exp, _, _)) if exp == logika.th.normalizeExp(orClaim.left) => HashSet ++ sp.claims
           case _ =>
             reporter.error(leftSubProofNo.posOpt, Logika.kind, s"Expecting a sub-proof step assuming the left-operand of $orClaimNo's claim")
             return err
         }
         val rightSubProof: HashSet[AST.Exp] = spcMap.get(rightSubProofNo) match {
-          case Some(sp@StepProofContext.SubProof(_, exp, _)) if exp == logika.th.normalizeExp(orClaim.right) => HashSet ++ sp.claims
+          case Some(sp@StepProofContext.SubProof(_, exp, _, _)) if exp == logika.th.normalizeExp(orClaim.right) => HashSet ++ sp.claims
           case _ =>
             reporter.error(rightSubProofNo.posOpt, Logika.kind, s"Expecting a sub-proof step assuming the right-operand of $orClaimNo's claim")
             return err
@@ -203,7 +215,7 @@ import org.sireum.logika.Logika.Reporter
         }
         val ISZ(subProofNo) = args
         val subProof: ISZ[AST.Exp] = spcMap.get(subProofNo) match {
-          case Some(sp: StepProofContext.SubProof) if sp.assumption == logika.th.normalizeExp(claim.exp) => sp.claims
+          case Some(sp: StepProofContext.SubProof) if logika.th.normalizeExp(sp.assumption) == logika.th.normalizeExp(claim.exp) => sp.claims
           case _ =>
             reporter.error(subProofNo.posOpt, Logika.kind, s"Expecting a sub-proof step assuming the operand of step ${step.id}'s claim")
             return err
@@ -234,7 +246,7 @@ import org.sireum.logika.Logika.Reporter
       case string"PbC" =>
         val ISZ(subProofNo) = args
         val subProof: ISZ[AST.Exp] = spcMap.get(subProofNo) match {
-          case Some(sp: StepProofContext.SubProof) if isUBuiltIn(sp.assumption, AST.ResolvedInfo.BuiltIn.Kind.UnaryNot) => sp.claims
+          case Some(sp: StepProofContext.SubProof) if isUBuiltInOf(sp.assumption, step.claim, AST.ResolvedInfo.BuiltIn.Kind.UnaryNot) => sp.claims
           case _ =>
             reporter.error(subProofNo.posOpt, Logika.kind, s"Expecting a sub-proof step assuming the negation of step ${step.id}'s claim")
             return err
