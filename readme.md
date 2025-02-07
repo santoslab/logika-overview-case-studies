@@ -1,6 +1,6 @@
 # Logika Overview Case Studies
 
-This repository contains the projects that were used as Logika case studies. The experiments were conducted using Sireum version 4.20240508.f1c262c so that version should be used when attempting to replicate the reported results. That version can be obtained as follows:
+This repository contains the projects that were used as Logika case studies. The experiments were conducted using Sireum version 4.20250124.83153a7 so that version should be used when attempting to replicate the reported results. That version can be obtained as follows:
 
 For Linux or macOS
 
@@ -13,12 +13,12 @@ export PATH=$SIREUM_HOME/bin:$PATH
 or for Windows
 ```
 ⧉
-cmd /V /C "set DIR=Sireum&& set SIREUM_V=4.20250121.1d0c4b2 && (if exist !DIR! rd /S /Q !DIR!) && md !DIR!\bin && cd !DIR!\bin && curl -JLso init.bat https://raw.githubusercontent.com/sireum/kekinian/!SIREUM_V!/bin/init.bat && init.bat"
+cmd /V /C "set DIR=Sireum&& set SIREUM_V=4.20250124.83153a7 && (if exist !DIR! rd /S /Q !DIR!) && md !DIR!\bin && cd !DIR!\bin && curl -JLso init.bat https://raw.githubusercontent.com/sireum/kekinian/!SIREUM_V!/bin/init.bat && init.bat"
 set SIREUM_HOME=%cd%\Sireum
 set PATH=%SIREUM_HOME%\bin;%PATH%
 ```
 
-What follows assumes the SIREUM_HOME environmental variable has been set and that Sireum's bin directory has been added to the path.  To verify a correct installation, run Sireum from the command line by typing `sireum`.  The output should indicate a build date of `4.20240508.f1c262c`.
+What follows assumes the SIREUM_HOME environmental variable has been set and that Sireum's bin directory has been added to the path.  To verify a correct installation, run Sireum from the command line by typing `sireum`.  The output should indicate a build date of `4.20250124.83153a7`.
 
 ## Replicating the Experiments
 
